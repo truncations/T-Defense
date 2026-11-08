@@ -193,3 +193,11 @@
 
 - Final current-source full regression:237passed244.26s, including45newVM-kit checks. Focused45passed11.79s and actualextensionreconnect1passed29.27s. GlobalRuffcheck/format and whitespace clean; safety software-review OK and demo workflow-review PASS. Source-only ZIP byte-matched and first-steps/full guide prepared outside repo; runtime/media/OS/model/keys excluded.
 - VM deployment remains BLOCKED by missing administrator execution/Hyper-V management and absent Windows media/base. No feature installed, host switch/firewall created, VM booted, real target visited or local Ollama call performed. Exact hardware ACL enforcement, guest sandbox readiness, disposal and model latency are not verified. Future extension/API integration is not implemented. Source milestone may be committed locally; deployment readiness is not DONE.
+
+
+## Windows PowerShell sealing fix — IN VERIFICATION (2026-11-08)
+- User reached SealBase but screenshot showed native Python File<string> failure. Reproduced actual PS5.1 stripping embedded double quotes from Python -c (print("QUOTE_PROBE") became print(QUOTE_PROBE)). Replaced guest browser probe with a copied script file and bounded JSON diagnostics. Host policy helpers now use module CLI rather than inline Python; route-validation failures stop switch creation.
+- Prepare/Seal explicitly reject Server Core with Desktop Experience guidance. No VM/disk changed by this session; existing prepared base can retry sealing with patched source. Actual guest OS/browser status still awaits user-run result. Verification pending.
+
+- Focused current-source50tests passed14.91s (all45VM tests plus5sealing/PS5.1 regressions); globalRuff/formatclean. Actual PS5.1 preserves quoted HTML through file invocation and host policy module CLIs. Reviewer safetyOK/demoPASS conditionalonfullregression.
+- Full regression cannot run cleanly while an existing replay backend occupies8000:213passed,21fixtureerrors and8dependentfailures. Hostsocket/process enumeration is unavailable to this session despite reachable health endpoint. Asked user to stop the backend while leaving the VM running; full rerun/localcommit pending. No bypass of VM readiness checks, no disk recreation, no base seal claimed.

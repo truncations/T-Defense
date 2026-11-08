@@ -111,3 +111,10 @@ The handout's v0.6.0 app/sandbox_jobs.py/app/local_ai.py/sandbox-kit worker are 
 - [Hyper-V extended ACLs](https://learn.microsoft.com/en-us/powershell/module/hyper-v/add-vmnetworkadapterextendedacl)
 - [PowerShell Direct](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/powershell-direct)
 - [Ollama structured output](https://ollama.com/blog/structured-outputs)
+
+
+## SealBase File<string> error on Windows PowerShell5.1
+
+The original inline Python readiness expression lost embedded quotes through native argument passing. The patched script copies vm_kit/readiness.py into the prepared guest and executes that file; it validates native exit status plus a bounded JSON Boolean success. Host origin/public-IP/route policy helpers also use module entry points rather than inline Python. Update the whole vm_kit source folder together.
+
+Keep the prepared base running and rerun SealBase from elevated host Windows PowerShell. No recreation or PrepareBase rerun is required for this quote repair. A subsequent Server Core error requires Desktop Experience installation; a browser error now includes the bounded underlying diagnostic. Chromium sandbox requirements remain enabled, and failed checks never seal the base. Actual VM readiness/network enforcement still require user-host verification.

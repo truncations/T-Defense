@@ -104,7 +104,10 @@ if ($Action -eq 'PrepareBase') {
  if ($vm.State -eq 'Off') { Start-VM -Name $baseVM | Out-Null }
  $session=Guest-Session $baseVM
  try {
-  Invoke-Command -Session $session -ScriptBlock {New-Item -ItemType Directory -Path 'C:\TDefense' -Force | Out-Null}
+  Invoke-Command -Session $session -ScriptBlock {
+   if ((Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').InstallationType -eq 'Server Core') { throw 'This VM uses Server Core. Install Windows Server with Desktop Experience before preparing this base.' }
+   New-Item -ItemType Directory -Path 'C:\TDefense' -Force | Out-Null
+  }
   Copy-Item -LiteralPath $OfflineKit -Destination 'C:\TDefense\OfflineKit' -ToSession $session -Recurse
   Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Initialize-Guest.ps1') -Destination 'C:\TDefense\Initialize-Guest.ps1' -ToSession $session
   Invoke-Command -Session $session -ArgumentList ([bool]$UseLocalAI) -ScriptBlock {param($AI);& 'C:\TDefense\Initialize-Guest.ps1' -IncludeAI:$AI}
@@ -117,7 +120,9 @@ if ($Action -eq 'SealBase') {
  if (Test-Path -LiteralPath $manifest) { throw 'A sealed manifest already exists. No base is overwritten.' }
  $session=Guest-Session $baseVM
  try {
+  Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'readiness.py') -Destination 'C:\TDefense\readiness-check.py' -ToSession $session
   $ok=Invoke-Command -Session $session -ScriptBlock {
+   if ((Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion').InstallationType -eq 'Server Core') { throw 'This VM uses Server Core. Reinstall with Desktop Experience before sealing it.' }
    if (-not (Test-Path 'C:\TDefense\prepared.json')) { throw 'Run PrepareBase first.' }
    if (Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue) { throw 'Base must remain offline.' }
    if (Get-Command Get-BitLockerVolume -ErrorAction SilentlyContinue) {
@@ -127,8 +132,18 @@ if ($Action -eq 'SealBase') {
     if ((Get-WindowsFeature -Name BitLocker).Installed) { throw 'Cannot verify encryption state of this base.' }
    } else { throw 'Cannot verify base encryption state.' }
    $env:PLAYWRIGHT_BROWSERS_PATH='C:\TDefense\Browsers'
-   & 'C:\TDefense\venv\Scripts\python.exe' -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); b=p.chromium.launch(chromium_sandbox=True); page=b.new_page(); page.set_content("<h1>Synthetic offline readiness check</h1>"); assert page.locator("h1").count()==1; b.close(); p.stop()'
-   if ($LASTEXITCODE -ne 0) { throw 'Offline browser readiness failed.' }
+   # Execute a script file: PS5.1 strips embedded quotes from Python -c arguments.
+   $previousPreference=$ErrorActionPreference
+   try {
+    $ErrorActionPreference='Continue'
+    $probeOutput=@(& 'C:\TDefense\venv\Scripts\python.exe' 'C:\TDefense\readiness-check.py' 2>&1)
+    $probeExit=$LASTEXITCODE
+   } finally { $ErrorActionPreference=$previousPreference }
+   $diagnostic=($probeOutput -join "`n")
+   if ($diagnostic.Length -gt 8192) { throw 'Offline browser readiness returned oversized diagnostics.' }
+   if ($probeExit -ne 0) { throw "Offline browser readiness failed. $diagnostic" }
+   try { $probe=$diagnostic | ConvertFrom-Json } catch { throw 'Offline browser readiness returned invalid JSON.' }
+   if ($probe.ok -isnot [bool] -or $probe.ok -ne $true) { throw 'Offline browser readiness did not confirm success.' }
    return $true
   }
   if (-not $ok) { throw 'Base verification failed.' }
@@ -146,7 +161,7 @@ if ($Action -eq 'SealBase') {
 if ($Action -ne 'Inspect') { throw 'Unsupported action.' }
 if (-not (Test-Path -LiteralPath $manifest)) { throw 'No sealed base. Complete CreateBase, PrepareBase, and SealBase first.' }
 # Validate the destination before creating host resources. No network access occurs here.
-$origin=$TargetOrigin | & $python -c 'import sys; from vm_kit.policy import target_origin; print(target_origin(sys.stdin.read().strip()))'
+$origin=$TargetOrigin | & $python -m vm_kit.checks origin
 if ($LASTEXITCODE -ne 0) { throw 'Use an origin-only public http(s) destination, without a path or query.' }
 Assert-Base
 $seal=Get-Content -LiteralPath $manifest -Raw | ConvertFrom-Json
@@ -171,7 +186,8 @@ try {
   # Refuse overlapping local IPv4 networks, including VPN routes. No NAT/default route is created.
   $conflict=Get-NetRoute -AddressFamily IPv4 | Where-Object { $_.DestinationPrefix -ne '0.0.0.0/0' -and $_.DestinationPrefix -ne '255.255.255.255/32' } | ForEach-Object {
    $prefix=$_.DestinationPrefix
-   $value=& $python -c 'import ipaddress,sys; print(ipaddress.ip_network(sys.argv[1],strict=False).overlaps(ipaddress.ip_network("192.168.253.0/30")))' $prefix
+   $value=& $python -m vm_kit.checks route-overlaps $prefix
+   if ($LASTEXITCODE -ne 0 -or $value -notin @('True','False')) { throw 'Cannot validate local route overlap; no switch will be created.' }
    if ($value -eq 'True') { $prefix }
   }
   if ($conflict) { throw 'Dedicated VM subnet overlaps an existing route; select/review another subnet before proceeding.' }
@@ -226,7 +242,7 @@ try {
   $PublicEgressAddress=@((Invoke-RestMethod -Uri 'https://api.ipify.org?format=json' -TimeoutSec 10).ip)
  }
  foreach ($address in $PublicEgressAddress) {
-  $checked=$address | & $python -c 'import sys,ipaddress; from vm_kit.policy import public_ipv4; a=ipaddress.ip_address(sys.stdin.read().strip()); assert public_ipv4(a); print(a)'
+  $checked=$address | & $python -m vm_kit.checks public-ip
   if ($LASTEXITCODE -ne 0) { throw 'Cannot determine a valid public egress IPv4; no browsing allowed.' }
   $denied+=([string]$checked+'/32')
  }
