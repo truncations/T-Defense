@@ -1,5 +1,10 @@
 # T-Defense progress
 
+## Missed brand-lookalike link — November 8, 2026
+- Reproduced the bare https://www.paypal.ai/scam link producing no warning in the shipped collector/assessment.
+- Added a narrow local hostname cue for PayPal-like destinations, with recognized-domain boundaries and no path/text collection. Kept marketplace/GitHub rules unchanged; packaged as 0.5.2.
+- Verified 74 targeted regressions and targeted Ruff checks, including the real extension list and guarded click on an intercepted synthetic fixture. No new full-suite or Windows/long-stream verification claimed.
+
 ## Lovable review milestone — November 8, 2026
 - Preserved public checkpoint d8fb7e9 and local MV3/Python architecture; implemented bounded incremental collection, filename/price evidence fixes, and findings-list trust initiation.
 - 53 targeted behavioral regressions passed; full suite had 163 passed and three unchanged legacy investigator teardown errors, reproduced independently.
@@ -164,3 +169,12 @@
 - Second run159passed/1failed: on Windows, rejecting a POST with an unread body can reset its client connection before404 is read. Changed the explicit unrelated-route probe to a bodyless POST; fixture still rejects unrelated bodies without reading/retaining them. This changes only test probing, not production logic or canary assertions.
 
 - Final fullsuite160passed191.24s; focused canary3passed8.51s after test isolation fix. Ruff check/format and whitespace clean. Shared layout/manual+automatic outage/recovery regressions pass. Final8 staged files pass secret/environment checks; no runtime traffic/log artifacts staged. v0.4.1 ZIP10files byte-matched, quickstart updated. No conversation analysis implemented. Reviewed source is ready for guarded publication; preserve original local commit on local/layout-status-history-2026-11-08 before clean exact-content alignment.
+
+## 0.5.0 page-local controls and approved pairing (2026-11-08)
+- Independent bottom-right risk tabs, vertical drag, sliding drawer, genuine-popup findings fallback and one-time local installation approval/automatic reconnect implemented. Existing action guards and popup trust preserved. Conversation preparation documented, no analysis enabled.
+- Full suite: 173 passed with the same three legacy investigator shutdown errors; targeted new flows and ruff passed. Windows/long-stream verification remains local. See UPDATE_NOTES.md for installation.
+
+## 0.5.1 recovery and controls (2026-11-08)
+- Reproduced automatic pairing rejecting a valid manual connection and reinjection retaining old monitor. Both regressions now pass; automatic pairing opens local approval for unapproved installations.
+- Version-aware replacement, nonzero yellow/magenta pulse, large close target and actions-area trust initiation implemented.
+- Combined native regressions: 37 passed; ruff checked. Windows/YouTube and three pre-existing investigator shutdown errors remain unverified/unresolved.

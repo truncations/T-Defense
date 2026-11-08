@@ -1,5 +1,8 @@
 (() => {
-  if (globalThis.TDefenseSnapshot) return;
+  const version='0.5.2';
+  if(globalThis.TDefenseSnapshot?.version===version)return;
+  try{globalThis.TDefenseGuard?.stop();}catch{/* Old extension context may be detached. */}
+  globalThis.TDefenseSnapshot?.reset();
   const ids = new WeakMap(); let nextId = 0;
   const excluded = 'input,textarea,select,[contenteditable]:not([contenteditable="false"]),#tdefense-page-guard,script,style,noscript';
   function safeText(node, limit = 1200, budget=180) {
@@ -91,6 +94,13 @@
     if (/social.?security|\bssn\b/.test(meta)) return 'identity';
     if (/gift.?card/.test(meta)) return 'gift_card';
     return null;
+  }
+  function brandLookalike(value){
+    try{
+      const host=new URL(value).hostname.toLowerCase().replace(/\.$/,'');
+      if(['paypal.com','paypal.me','paypalobjects.com'].some(domain=>host===domain || host.endsWith('.'+domain)))return false;
+      return host.split('.').some(label=>/^paypal(?:-|$)/.test(label));
+    }catch{return false;}
   }
   function identify(node, signature) { const old=ids.get(node); if (!old || old.signature!==signature) ids.set(node,{signature,id:'td_'+(++nextId)}); return ids.get(node).id; }
   function destination(node){
@@ -241,5 +251,5 @@
     const nodes=new Map(elements.map(item=>[item.element_id,collected.nodes.get(item.element_id)]));
     return {snapshot:{...collected.snapshot,elements,coverage:{...collected.snapshot.coverage,elements_scanned:elements.length,trusted_skipped:ignoredNodes.size}},nodes,ignoredNodes,trustedTargets};
   }
-  globalThis.TDefenseSnapshot={collect,collectAsync,invalidate,reset,get revision(){return revision;},get pendingCount(){return dirty.size;},identity,identitySource,filterTrusted,reviewTarget,describe:node=>safeText(node,90)};
+  globalThis.TDefenseSnapshot={version,brandLookalike,collect,collectAsync,invalidate,reset,get revision(){return revision;},get pendingCount(){return dirty.size;},identity,identitySource,filterTrusted,reviewTarget,describe:node=>safeText(node,90)};
 })();

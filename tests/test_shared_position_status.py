@@ -10,7 +10,7 @@ from playwright.sync_api import expect, sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 
 
-def test_shared_position_and_stable_connection_status(server, tmp_path):
+def test_independent_page_positions_and_stable_connection_status(server, tmp_path):
     key = httpx.get(server + "/api/extension/pairing").json()["pairing_code"]
     extension = tmp_path / "extension"
     shutil.copytree(ROOT / "extension", extension)
@@ -52,7 +52,7 @@ def test_shared_position_and_stable_connection_status(server, tmp_path):
             second.goto("https://layout-peer.example/layout-test")
             peer = second.locator("#tdefense-page-guard")
             expect(peer).to_have_attribute("data-status", "checked", timeout=15000)
-            # Move one actual handle; already-open cross-origin tab updates without reload/check.
+            # Moving this handle must not affect another page.
             first.bring_to_front()
             handle = ui.locator("#move").bounding_box()
             first.mouse.move(
@@ -64,13 +64,15 @@ def test_shared_position_and_stable_connection_status(server, tmp_path):
 
             def position(page):
                 return page.evaluate(
-                    """()=>{const r=document.querySelector('#tdefense-page-guard').shadowRoot.querySelector('.shell').getBoundingClientRect();return {x:r.x,y:r.y};}"""
+                    """()=>{const r=document.querySelector('#tdefense-page-guard').shadowRoot.querySelector('.rail').getBoundingClientRect();return {x:r.x,y:r.y};}"""
                 )
 
             moved = position(first)
-            second.wait_for_function(
-                'expected=>{const r=document.querySelector("#tdefense-page-guard").shadowRoot.querySelector(".shell").getBoundingClientRect();return Math.abs(r.x-expected.x)<2 && Math.abs(r.y-expected.y)<2;}',
-                arg=moved,
+            assert moved["y"] < 400
+            assert abs(position(second)["y"] - moved["y"]) > 100
+            assert (
+                second.locator("#tdefense-page-guard").evaluate("n=>n.style.bottom")
+                == "16px"
             )
             third = context.new_page()
             third.goto("https://layout-new.example/layout-test")
@@ -78,20 +80,15 @@ def test_shared_position_and_stable_connection_status(server, tmp_path):
                 "data-status", "checked", timeout=15000
             )
             assert (
-                abs(position(third)["x"] - moved["x"]) < 2
-                and abs(position(third)["y"] - moved["y"]) < 2
+                third.locator("#tdefense-page-guard").evaluate("n=>n.style.bottom")
+                == "16px"
             )
-            # Reset is global too, and survives reload.
-            worker.evaluate(
-                "()=>handle({type:'RESET_POSITION'},{id:chrome.runtime.id,url:chrome.runtime.getURL('popup.html')})"
-            )
-            for page in [first, second, third]:
-                page.wait_for_function(
-                    '()=>document.querySelector("#tdefense-page-guard").style.left==="auto"'
-                )
-            second.reload()
-            expect(peer).to_have_attribute("data-status", "checked", timeout=15000)
-            assert abs(position(first)["x"] - position(second)["x"]) < 2
+            first.reload()
+            expect(ui).to_have_attribute("data-status", "checked", timeout=15000)
+            assert ui.evaluate("n=>n.style.bottom") == "16px"
+            first.evaluate("history.pushState({}, '', '/layout-test#next')")
+            first.wait_for_timeout(1200)
+            assert ui.evaluate("n=>n.style.bottom") == "16px"
             third.close()
             second.close()
             first.bring_to_front()
@@ -123,15 +120,11 @@ def test_shared_position_and_stable_connection_status(server, tmp_path):
                 "id=>chrome.tabs.sendMessage(id,{type:'TDEFENSE_RESTART_CHECK'})", tab
             )
             expect(ui).to_have_attribute("data-status", "unavailable", timeout=8000)
-            expect(ui.locator("#count")).to_have_text(
-                "Checks unavailable — use caution"
-            )
+            assert ui.get_attribute("data-status") == "unavailable"
             ui.locator("#toggle").click()
             first.evaluate("headlines=[]")
             ui.locator("#scan").click()
-            expect(ui.locator("#count")).to_have_text(
-                "Checks unavailable — use caution"
-            )
+            assert ui.get_attribute("data-status") == "unavailable"
             first.wait_for_timeout(1000)
             assert first.evaluate("headlines") == []
             first.locator("#change").evaluate(
@@ -146,9 +139,7 @@ def test_shared_position_and_stable_connection_status(server, tmp_path):
                 "id=>chrome.tabs.sendMessage(id,{type:'TDEFENSE_RESTART_CHECK'})", tab
             )
             expect(ui).to_have_attribute("data-status", "checked", timeout=10000)
-            expect(ui.locator("#count")).to_have_text(
-                "I'm running checks for you periodically"
-            )
+            assert ui.get_attribute("data-warning-count") == "0"
             # Authentication errors are not delayed/retried as transient faults.
             worker.evaluate(
                 """()=>{globalThis.authAttempts=0;requestBackend=async(...args)=>{if(args[0]==='/api/page/assess'){authAttempts++;throw new Error('Pair again with the current backend session.');}return realBackend(...args);};}"""

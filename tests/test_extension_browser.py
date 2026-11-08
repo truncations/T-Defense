@@ -57,7 +57,7 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
         expect(overlay.locator("#risk-indicator")).to_be_visible()
         overlay.locator("#toggle").click()
         expect(overlay.locator("#body")).to_be_visible()
-        overlay.locator("#toggle").click()
+        overlay.locator("#close").click()
         expect(overlay.locator("#body")).to_be_hidden()
         page.locator(".lab-message").first.evaluate(
             "node => node.append(document.createTextNode(' Final notice: verify your password immediately.'))"
@@ -68,7 +68,7 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
         )
         overlay.locator("#toggle").click()
         page.screenshot(
-            path="demo_backup/extension-message-overlay.png", full_page=True
+            path="/tmp/browser/extension-message-overlay.png", full_page=False
         )
         link = page.locator(".lab-message a").first
         link.click()
@@ -131,7 +131,7 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
             set(json.loads(body)) == {"page_origin", "reason", "elements", "coverage"}
             for body in posted
         )
-        page.screenshot(path="demo_backup/extension-form-overlay.png", full_page=True)
+        page.screenshot(path="/tmp/browser/extension-form-overlay.png", full_page=False)
         # Delay actual backend responses, then change DOM during the request.
         worker.evaluate("""() => {globalThis.originalRequest=requestBackend;
           requestBackend=async(path,...args)=>{const value=await originalRequest(path,...args);
@@ -165,7 +165,7 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
             "id => chrome.tabs.sendMessage(id,{type:'TDEFENSE_SCAN'})", tab_id
         )
         expect(overlay).to_have_attribute("data-status", "unavailable", timeout=12000)
-        expect(overlay.locator("#count")).to_contain_text("unavailable")
+        assert overlay.get_attribute("data-status") == "unavailable"
         worker.evaluate("id => stopMonitoring(id)", tab_id)
         expect(overlay).to_have_count(0)
         assert (

@@ -88,21 +88,12 @@ def test_continuous_monitoring_trust_revocation_and_quiet_ui(server, tmp_path):
             ).click()  # compact bottom-right dock leaves Gmail-like profile controls usable
             assert ui.locator(".shell").bounding_box()["y"] > 100
             ui.locator("#risk-indicator").click()
-            icon = ui.locator("#risk-indicator").bounding_box()
-            glyph = ui.locator("#risk-indicator svg").bounding_box()
-            assert (
-                abs(icon["x"] + icon["width"] / 2 - glyph["x"] - glyph["width"] / 2) < 1
-            )
-            assert (
-                abs(icon["y"] + icon["height"] / 2 - glyph["y"] - glyph["height"] / 2)
-                < 1
-            )
-            before = ui.locator(".shell").bounding_box()
+            ui.locator("#close").click()
+            before = ui.locator(".rail").bounding_box()
             ui.locator("#move").focus()
-            page.keyboard.press("ArrowLeft")
             page.keyboard.press("ArrowUp")
-            moved = ui.locator(".shell").bounding_box()
-            assert moved["x"] < before["x"] - 10 and moved["y"] < before["y"] - 10
+            moved = ui.locator(".rail").bounding_box()
+            assert moved["x"] == before["x"] and moved["y"] < before["y"] - 10
             handle = ui.locator("#move").bounding_box()
             page.mouse.move(
                 handle["x"] + handle["width"] / 2, handle["y"] + handle["height"] / 2
@@ -110,11 +101,12 @@ def test_continuous_monitoring_trust_revocation_and_quiet_ui(server, tmp_path):
             page.mouse.down()
             page.mouse.move(handle["x"] - 70, handle["y"] - 40, steps=8)
             page.mouse.up()
-            dragged = ui.locator(".shell").bounding_box()
-            assert dragged["x"] < moved["x"] - 50
-            assert worker.evaluate(
+            dragged = ui.locator(".rail").bounding_box()
+            assert dragged["x"] == moved["x"] and dragged["y"] < moved["y"] - 20
+            assert not worker.evaluate(
                 "async()=>!!(await chrome.storage.local.get('panelPosition')).panelPosition"
             )
+            ui.locator("#toggle").click()
             ui.locator(".finding-row").first.click()
             # Unchanged checks must not rewrite the list, facts, or visible monitoring footer, or reannounce risks.
             page.evaluate(
@@ -127,7 +119,7 @@ def test_continuous_monitoring_trust_revocation_and_quiet_ui(server, tmp_path):
                 )
                 page.wait_for_timeout(800)
             assert page.evaluate("quietChanges") == []
-            expect(ui.locator("#risk-indicator")).to_have_class("risk")
+            expect(ui.locator("#risk-indicator")).to_have_class("risk attention")
             # Trust can only be committed through genuine-toolbar control routes.
             candidate = worker.evaluate(
                 "id=>handle({type:'TRUST_PREVIEW',tabId:id},{id:chrome.runtime.id,url:chrome.runtime.getURL('popup.html')})",

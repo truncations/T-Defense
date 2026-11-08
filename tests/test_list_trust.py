@@ -47,7 +47,8 @@ def test_findings_list_only_initiates_genuine_popup_confirmation(server, tmp_pat
         ui = page.locator("#tdefense-page-guard")
         expect(ui).to_have_attribute("data-warning-count", "2", timeout=15000)
         ui.locator("#risk-indicator").click()
-        ui.locator(".finding-trust").first.click()
+        ui.locator(".finding-row").first.click()
+        ui.locator(".actions .finding-trust").click()
         assert worker.evaluate("()=>TrustStore.read()") == []
         tab = worker.evaluate(
             "async()=> (await chrome.tabs.query({})).find(t=>t.url?.endsWith('/list-trust')).id"

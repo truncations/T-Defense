@@ -1,36 +1,35 @@
-# T-Defense local update — November 8, 2026
+# T-Defense 0.5.2 local update — November 8, 2026
 
-Based on public checkpoint d8fb7e9fcd93dddf8ffec038b3bb49d00bbff001. No changes were applied to your Windows folder or pushed to GitHub.
+## 0.5.2 link sensitivity correction
+- A bare link such as https://www.paypal.ai/scam now gets a medium review warning: it uses a PayPal-like hostname outside the recognized PayPal domains. This is a warning sign, not proof the destination is malicious.
+- Exact recognized PayPal domains/subdomains do not trigger this new rule; other evidence still applies. No blanket marketplace exemptions or broad suspicious-TLD/path rules were added.
+- Link paths, raw messages, and listing labels are not sent to the local service. Existing Mercari sold-out/price and GitHub filename fixes remain unchanged.
+- Restart the Python application as well as reloading the extension and refreshing monitored tabs. This narrow rule does not cover every brand or spelling variation.
+- 74 targeted regressions passed, including the genuine extension warning/list/click pause and benign Mercari/GitHub controls; targeted Ruff checks passed. No real destination was visited.
 
-## Changed files
-- extension/scanner.js
-- extension/content.js
-- extension/background.js
-- extension/popup.js
-- tests/test_incremental_scanner.py
-- tests/test_list_trust.py
-- PROGRESS.md and UPDATE_NOTES.md
+## 0.5.1 corrections
+- Automatic connection reuses a valid existing connection. Otherwise it opens local setup for the one-time installation approval, then retry Connect automatically. Approval never starts monitoring.
+- Local setup refreshes its session after backend restart.
+- Versioned scanner/page runtimes dispose and replace outdated monitors on extension reload. A new Python server alone cannot install updated browser code.
+- Nonzero counts stay yellow/magenta and pulse every 1.5 seconds (static with reduced motion); the close button has a 44px target.
+- Trust initiation acts on the selected finding beside Check again/Pause everywhere. Final permanent trust still requires the genuine popup.
+- 37 targeted native regressions passed. Windows/long-stream checks and three legacy shutdown errors remain unresolved.
 
-## What changed
-- Routine collection walks bounded portions of the DOM, rotates through document/open-shadow work, coalesces changed candidates in a capped queue, and yields between metadata batches.
-- Interaction checks prioritize the exact link/form instead of scanning unrelated page candidates. Hidden tabs skip routine scans.
-- Routine mutation refreshes are coalesced. A maximum scheduling delay prevents a continuously changing chat from indefinitely postponing checks.
-- Collected results are rejected before transmission and after response if document, trust, or observed-mutation generations changed.
-- GitHub file-view labels are not treated as website addresses or downloads solely because of their filenames. Numeric prices are not interpreted as website addresses. Real URL-label deception, explicit downloads, and plausible direct executable links remain checked.
-- Each findings row can initiate exact-content trust review. The genuine extension popup remains the sole confirmation boundary; no in-page action creates permanent trust.
+## This update
+- Every fresh page starts bottom right; vertical movement is document-local and never follows other tabs. Same-page navigation resets it too.
+- A compact ! count and arrow opens a sliding right-side findings drawer. Routine checking no longer occupies the collapsed control. Existing concerning clicks/submissions pause for review and open the drawer.
+- The genuine popup retains up to 200 standardized evidence rows per active document for backup if on-page controls fail. Previous/out-of-batch evidence is labeled; no raw message labels or typed values are stored. Page tampering can still interfere with detection; this is not a safety guarantee.
+- Automatic pairing: choose Connect automatically or Start everywhere, approve the matching installation ID once in local setup, then press Start. Approved IDs persist in ignored work/approved_extensions.json; credentials remain process/session scoped. Reconnects never enable stopped monitoring. Revoke from local setup. Manual pairing remains an optional fallback.
+- Conversation preparation is documented in CONVERSATION_PREPARATION.md; no transcript capture, history storage, cloud processing, or conversation-level analysis is enabled.
 
 ## Verification
-- 53 targeted scanner, extension lifecycle, status, interaction, email/reputation, and trust tests passed, including real MV3/local-assessment flows.
-- Five new regression tests also passed after formatting.
-- Full preserved suite: 163 tests passed, with three teardown errors in unchanged legacy investigator timeout tests. An isolated rerun reproduced these: 24 passed with the same three shutdown errors. These are not reported as a clean full-suite result.
-- Ruff lint and formatting checks passed for the preserved source.
-- Synthetic 10,000-message synchronous collection timings before: 301, 225, 237 ms; after: 23, 15, 8 ms. These represent bounded batches rather than whole-page equivalents; incomplete coverage remains explicitly reported. They are not proof of uninterrupted YouTube playback, measured memory stability over ten hours, or real-world detection accuracy.
-- Tests used available sandbox Python dependencies rather than the handoff's future pinned dependency versions. Keep requirements.txt unchanged and rerun in your existing environment.
+- Full native suite: 173 assertions passed; three pre-existing legacy investigator shutdown errors remain (not a clean full-suite result).
+- New native flows verified on synthetic pages: independent positions/reload resets, local setup approval without code entry, popup evidence with removed page control, drawer desktop/mobile, guarded click/submission, Stop during pairing, trust security, backend credential rotation and revocation.
+- Ruff checks passed. Sandbox dependencies match available tools, not the future pinned requirements; requirements.txt is unchanged.
+- Windows installation, extended YouTube playback and ten-hour memory/performance remain unverified.
 
 ## Apply safely
-Back up your current folder. Compare and copy only the changed files above into the existing T-Defense folder; do not overwrite local secrets, dependencies, history, or settings. Reload the same installed extension folder/ID, restart the local application, refresh website tabs, and pair through the genuine toolbar. Keep Start/Stop under your control.
+Back up your existing folder and merge this source update, preserving .env, work/, existing dependencies, local settings and repository history. Reload the same extension folder/ID, restart the Python application, and refresh monitored tabs. Open local setup for the one-time installation approval; matching the ID in the genuine toolbar is essential. No files were applied directly to your Windows folder or pushed to GitHub.
 
-## Not implemented / still needed
-- Progress-display redesign, automatic pairing, conversation analysis, and cloud processing remain unimplemented.
-- Extended real YouTube playback and long-session memory/latency measurements must be performed locally. Bounded scanning trades immediate whole-page coverage for incremental work; unmarked/unchecked elements are not certified safe.
-- Resolve or verify legacy investigator shutdown behavior in the original pinned environment before calling the entire suite clean.
+## Changed source areas
+extension/content.js, background.js, popup.js/html/css, manifest.json, README.md; app/page_guard.py; static/extension.html and extension-setup.js; new/updated regression tests; CONTRACTS.md, CONVERSATION_PREPARATION.md, PROGRESS.md and these notes. Earlier bounded-scanner and filename/price false-positive fixes remain included.
