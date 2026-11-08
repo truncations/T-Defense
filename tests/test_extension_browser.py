@@ -46,19 +46,27 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
         expect(overlay).to_have_attribute("data-warning-count", "0")
         page.locator("#add-message").click()
         expect(overlay.locator("#title")).to_have_text(
-            "T-Defense warning", timeout=12000
+            "Possible security risks", timeout=12000
         )
         assert int(overlay.get_attribute("data-warning-count")) > 0
         expect(overlay.locator("#announce")).to_contain_text("T-Defense warning")
         assert "Segoe UI" in overlay.locator(".shell").evaluate(
             "node => getComputedStyle(node).fontFamily"
         )
+        expect(overlay.locator("#body")).to_be_hidden()
+        expect(overlay.locator("#risk-indicator")).to_be_visible()
+        overlay.locator("#toggle").click()
+        expect(overlay.locator("#body")).to_be_visible()
         overlay.locator("#toggle").click()
         expect(overlay.locator("#body")).to_be_hidden()
         page.locator(".lab-message").first.evaluate(
             "node => node.append(document.createTextNode(' Final notice: verify your password immediately.'))"
         )
-        expect(overlay.locator("#body")).to_be_visible(timeout=12000)
+        expect(overlay.locator("#body")).to_be_hidden()
+        expect(overlay.locator("#risk-indicator")).to_have_class(
+            "risk attention", timeout=12000
+        )
+        overlay.locator("#toggle").click()
         page.screenshot(
             path="demo_backup/extension-message-overlay.png", full_page=True
         )
@@ -89,9 +97,21 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
         page.locator("#add-form").click()
         password = page.locator('input[name="password"]')
         password.fill("PRIVATE-TYPED-SENTINEL")
+        overlay.locator(".finding-row").filter(has_text="form ·").first.click()
         expect(overlay.locator("#facts")).to_contain_text("unencrypted", timeout=12000)
         page.locator(".lab-risk-form button").click()
         expect(overlay.locator("#guard-note")).to_be_visible()
+        expect(overlay.locator("#continue")).to_be_enabled(timeout=12000)
+        # Native validation may cancel replay before a submit event consumes the override.
+        previous_status = page.locator("#lab-status").inner_text()
+        password.evaluate("node=>node.required=true")
+        password.fill("")
+        overlay.locator("#continue").click()
+        expect(overlay.locator("#guard-note")).to_be_hidden()
+        password.fill("PRIVATE-TYPED-SENTINEL")
+        page.locator(".lab-risk-form button").click()
+        expect(overlay.locator("#guard-note")).to_be_visible()
+        assert page.locator("#lab-status").inner_text() == previous_status
         expect(overlay.locator("#continue")).to_be_enabled(timeout=12000)
         overlay.locator("#continue").click()
         expect(page.locator("#lab-status")).to_contain_text("No information was sent")

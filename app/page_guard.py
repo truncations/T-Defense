@@ -22,6 +22,7 @@ from pydantic import (
 )
 
 from app.reputation import REPUTATION, api_key
+from app.social_rules import SOCIAL_RULES
 
 router = APIRouter()
 PAIR_KEY = secrets.token_urlsafe(32)
@@ -67,6 +68,24 @@ class Signal(BaseModel):
     email_context: bool = False
     account_action: bool = False
     wrapped_destination: bool = False
+    social_signals: list[
+        Literal[
+            "reward-account-lure",
+            "reward-pressure",
+            "software-bait",
+            "disable-security",
+            "ransom-demand",
+            "investment-lure",
+            "relationship-payment-pressure",
+            "remote-support-pressure",
+            "private-image-extortion",
+            "coercive-threat",
+            "secrecy-isolation",
+            "authority-sensitive-request",
+            "emergency-identity-pressure",
+            "upfront-release-fee",
+        ]
+    ] = Field(default_factory=list, max_length=14)
     download: bool = False
     file_kind: Literal[
         "exe",
@@ -134,6 +153,9 @@ def assess_snapshot(snapshot: Snapshot) -> dict:
         facts = []
         rules = []
         severity = "low"
+        social_title = None
+        social_step = None
+        social_level = -1
 
         def add(rule, fact, level, rules=rules, facts=facts):
             nonlocal severity
@@ -215,17 +237,29 @@ def assess_snapshot(snapshot: Snapshot) -> dict:
                 "This link contains embedded content instead of a normal website address.",
                 "medium",
             )
+        for signal in dict.fromkeys(item.social_signals):
+            level, title, fact, step, requires_link = SOCIAL_RULES[signal]
+            if requires_link and not item.has_link:
+                continue
+            add(signal, fact, level)
+            if {"low": 0, "medium": 1, "high": 2}[level] > social_level:
+                social_title, social_step = title, step
+                social_level = {"low": 0, "medium": 1, "high": 2}[level]
         if rules:
             warnings.append(
                 {
                     "element_id": item.element_id,
                     "severity": severity,
                     "rules": rules,
-                    "title": "Pause before sharing information"
-                    if item.kind == "form"
-                    else "Check this message or link",
-                    "evidence": facts[:3],
-                    "next_step": "Keep attachments closed and do not enter passwords, card details, or codes until you verify independently.",
+                    "title": social_title
+                    or (
+                        "Pause before sharing information"
+                        if item.kind == "form"
+                        else "Check this message or link"
+                    ),
+                    "evidence": facts[-3:] if social_title else facts[:3],
+                    "next_step": social_step
+                    or "Keep attachments closed and do not enter passwords, card details, or codes until you verify independently.",
                 }
             )
     partial = snapshot.coverage.truncated or snapshot.coverage.frames_unchecked > 0

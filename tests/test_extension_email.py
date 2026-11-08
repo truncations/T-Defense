@@ -169,31 +169,28 @@ def test_email_priority_live_reputation_and_persistent_review(
                 "id=>handle({type:'REPUTATION',tabId:id,enabled:true},{id:chrome.runtime.id,url:chrome.runtime.getURL('popup.html')})",
                 tab,
             )
+            overlay.locator("#toggle").click()
+            overlay.locator(".finding-row").filter(has_text="link ·").first.click()
             expect(overlay.locator("#facts")).to_contain_text(
                 "VirusTotal reports 3 malicious", timeout=12000
             )
             expect(overlay.locator("#reputation")).to_contain_text("public-risk.com")
             page.locator("#email-link").dispatch_event("contextmenu")
-            expect(overlay.locator("#review-note")).to_contain_text(
-                "Reviewing this finding"
-            )
-            overlay.locator("#locate").click()
-            expect(overlay.locator("#review-note")).to_contain_text(
-                "Reviewing this finding"
-            )
+            expect(overlay.locator("#locate")).to_have_count(0)
+            row = overlay.locator(".finding-row").filter(has_text="link ·").first
+            previous_heading = overlay.locator("#count").inner_text()
             page.evaluate("document.body.append(document.createElement('aside'))")
             expect(overlay).to_have_attribute("data-status", "pending")
-            expect(overlay.locator("#locate")).to_be_enabled()
-            overlay.locator("#locate").click()
+            expect(overlay.locator("#count")).to_have_text(previous_heading)
+            row.click()
             expect(overlay.locator("#facts")).to_contain_text("VirusTotal")
             page.locator("#email-link").evaluate("node=>node.remove()")
-            expect(overlay.locator("#review-note")).to_contain_text(
-                "no longer on the page", timeout=12000
+            expect(overlay.locator("#finding-status")).to_contain_text(
+                "No longer on the page", timeout=12000
             )
-            expect(overlay.locator("#title")).to_have_text(
-                "Previously observed warning"
-            )
-            overlay.locator("#clear-review").click()
+            expect(overlay.locator("#findings")).to_contain_text("previous evidence")
+            overlay.locator("#scan").click()
+            expect(overlay.locator(".finding-row")).to_have_count(0, timeout=12000)
             page.locator(".a3s").evaluate(
                 'node=>node.innerHTML=\'<p>Hello, ordinary content.</p><a id="clean-link" href="https://public-clean.com/hello">Read more</a>\''
             )
@@ -204,7 +201,7 @@ def test_email_priority_live_reputation_and_persistent_review(
             expect(overlay.locator("#reputation")).to_contain_text(
                 "key is not configured", timeout=12000
             )
-            expect(overlay.locator("#count")).to_contain_text("Limited checks")
+            expect(overlay.locator("#activity")).to_contain_text("limited coverage")
             for mode, text in [
                 ("quota", "quota reached"),
                 ("timeout", "unavailable"),
@@ -219,7 +216,9 @@ def test_email_priority_live_reputation_and_persistent_review(
                     text, timeout=12000
                 )
                 if mode != "reports":
-                    expect(overlay.locator("#count")).to_contain_text("Limited checks")
+                    expect(overlay.locator("#activity")).to_contain_text(
+                        "limited coverage"
+                    )
             # Opt-out during an in-flight check must stay off after its response.
             worker.evaluate("""()=>{globalThis.originalRequest=requestBackend;
               requestBackend=async(...args)=>{const value=await originalRequest(...args);
