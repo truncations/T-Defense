@@ -23,6 +23,7 @@
     return {
       urgency: /suspend|immediately|act now|final notice|within \d+|expires? (?:today|soon)|urgent|only \d+.*left/.test(lower),
       sensitive_request: request && secret && !negative,
+      account_action: /(?:verify|confirm|update|restore|unlock|secure|review).{0,35}(?:account|billing|identity|payment)|(?:account|password).{0,25}(?:suspend|expire|reset|locked)/.test(lower),
       gift_code_request: request && /gift[ -]?card/.test(lower) && /code|pin/.test(lower) && !negative
     };
   }
@@ -42,7 +43,15 @@
     return null;
   }
   function identify(node, signature) { const old=ids.get(node); if (!old || old.signature!==signature) ids.set(node,{signature,id:'td_'+(++nextId)}); return ids.get(node).id; }
-  function collect(reason = 'manual') {
+  function destination(node){
+    let url=new URL(node.getAttribute('href'),location.href);let wrapped=false;
+    for(let depth=0;depth<2;depth++){
+      if(!['www.google.com','google.com'].includes(url.hostname) || url.pathname!=='/url')break;
+      const value=url.searchParams.get('q') || url.searchParams.get('url');
+      if(!value)break;const next=new URL(value);if(!['http:','https:'].includes(next.protocol))break;url=next;wrapped=true;
+    }return {url,wrapped};
+  }
+  function collect(reason = 'manual', focusNode=null) {
     const roots = [document]; let domTruncated = false;
     // Inspect open component trees within a bounded discovery budget.
     for (let i=0;i<roots.length && i<12;i++) {
@@ -53,15 +62,19 @@
         if (element.shadowRoot) {if(roots.length<12)roots.push(element.shadowRoot);else domTruncated=true;}
       }
     }
-    const selector='a[href],form,[data-tdefense-message],[role="article"],[role="listitem"],[class*="message"],[class*="chat-bubble"]';
-    const candidates = [...new Set(roots.flatMap(scope => [...scope.querySelectorAll(selector)]))].filter(node => !node.closest(excluded) && node.isConnected);
+    const emailSelector='.a3s,[data-message-id],[data-legacy-message-id],[data-tdefense-email]';
+    const selector='a[href],form,article,p,[data-tdefense-message],[role="article"],[role="listitem"],[class*="message"],[class*="chat-bubble"],'+emailSelector;
+    const visible=node=>node.isConnected && !!node.getClientRects().length && getComputedStyle(node).visibility!=='hidden';
+    const candidates = [...new Set(roots.flatMap(scope => [...scope.querySelectorAll(selector)]))].filter(node => !node.closest(excluded) && visible(node));
+    const rank=node=>node===focusNode || (focusNode && node.contains(focusNode))?0:node.tagName==='A' && node.closest(emailSelector)?1:node.tagName==='FORM'?2:node.closest(emailSelector)?3:node.getBoundingClientRect().top>=0 && node.getBoundingClientRect().top<innerHeight?4:5;
+    candidates.sort((left,right)=>rank(left)-rank(right));
     const elements=[]; const nodes=new Map();
-    for (const node of candidates.slice(0,200)) {
+    for (const node of candidates.slice(0,199)) {
       const isForm=node.tagName==='FORM'; const isLink=node.tagName==='A';
       const kind=isForm?'form':isLink?'link':'message';
-      const context=isLink?(node.closest('[data-tdefense-message],[role="article"],[role="listitem"],li,p') || node):node;
+      const context=isLink?(node.closest('[data-tdefense-message],[role="article"],[role="listitem"],li,p,'+emailSelector) || node):node;
       const text=safeText(context); const localFlags=flags(text);
-      const item={kind,...localFlags,has_link:isLink || !!node.querySelector('a[href]'),download:false,file_kind:'other',target_scheme:'other',target_origin:null,displayed_origin:null,sensitive_fields:[]};
+      const item={kind,...localFlags,email_context:!!node.closest(emailSelector),wrapped_destination:false,has_link:isLink || !!node.querySelector('a[href]'),download:false,file_kind:'other',target_scheme:'other',target_origin:null,displayed_origin:null,sensitive_fields:[]};
       if (isForm) {
         const controls=Array.from(node.elements);if(controls.length>200)domTruncated=true;
         const bounded=controls.slice(0,200);
@@ -72,7 +85,7 @@
       }
       if (isLink) {
         try {
-          const url=new URL(node.getAttribute('href'),location.href);
+          const decoded=destination(node);const url=decoded.url;item.wrapped_destination=decoded.wrapped;
           const scheme=url.protocol.slice(0,-1);item.target_scheme=['http','https','data','blob','javascript'].includes(scheme)?scheme:'other';
           item.target_origin=origin(url.href);
           const shown=safeText(node,250).match(/(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:[/:?#]|$)/i);
@@ -87,7 +100,8 @@
       const element_id=identify(node,JSON.stringify(item)+'|'+text);item.element_id=element_id;
       elements.push(item); nodes.set(element_id,node);
     }
-    return {snapshot:{page_origin:location.origin,reason,elements,coverage:{elements_seen:Math.min(candidates.length,100000),elements_scanned:elements.length,truncated:candidates.length>200 || domTruncated,frames_unchecked:Math.min(roots.reduce((count,root)=>count+root.querySelectorAll('iframe,frame').length,0),10000)}},nodes};
+    const pageItem={element_id:identify(document.documentElement,'page:'+location.origin),kind:'page',target_origin:location.origin};elements.push(pageItem);nodes.set(pageItem.element_id,document.documentElement);
+    return {snapshot:{page_origin:location.origin,reason,elements,coverage:{elements_seen:Math.min(candidates.length+1,100000),elements_scanned:elements.length,truncated:candidates.length>199 || domTruncated,frames_unchecked:Math.min(roots.reduce((count,root)=>count+root.querySelectorAll('iframe,frame').length,0),10000)}},nodes};
   }
   globalThis.TDefenseSnapshot={collect};
 })();

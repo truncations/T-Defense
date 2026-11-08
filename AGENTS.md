@@ -98,3 +98,9 @@ Activate the venv first. Windows PowerShell: `.\.venv\Scripts\Activate.ps1`. mac
 - The local Decoy Twin's original allowlist remains unchanged. The new page-assessment endpoint never fetches or submits to real websites and never types canaries into them.
 - Use synthetic pages for adversarial tests; a benign public-page smoke test may read structural metadata without submitting forms. Keep rules/coverage limits honest; do not promise detection of all phishing.
 - Primary homepage becomes extension setup/test dashboard. Preserve the prior SMS demo at /sms-demo. Use the same reviewer/tester checks, progress records and passing local commits before publication.
+
+## Domain reputation and email coverage (user request, 2026-11-07)
+- Opt-in VirusTotal domain reports are authorized as the sole third-party backend request in page assessment. Only fixed GET https://www.virustotal.com/api/v3/domains/{validated-public-hostname}; no target fetching, URL/file submission, private/reserved/IP lookups or redirect following. The original Decoy allowlist remains unchanged.
+- Key remains server-side in ignored .env/environment. Per-tab opt-in disclosure must state queried domains enter VirusTotal's community dataset; avoid confidential hostnames. Hostnames include subdomains; no full links/message text/form values are sent.
+- Bound and cache requests within public API limits. Missing key, quotas, unknown/old reports, failures and all-timeout reports remain partial/inconclusive; never equate zero detections with safety. Runtime cache expires and is not a browsing-history database.
+- Test email extraction with synthetic Gmail-like HTML only. Do not access or save real inbox messages. Show/Inspect findings survive rechecks, with clear historical/removed-element labels. No trained model, full URL reputation, attachment analysis or arbitrary-site dummy form submission is implied by this milestone.

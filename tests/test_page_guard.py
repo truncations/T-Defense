@@ -199,3 +199,17 @@ def test_extension_bundle_contains_only_fixed_public_files():
             page_guard.PAIR_KEY.encode() not in bundle.read(name)
             for name in bundle.namelist()
         )
+
+
+def test_provider_configuration_exposes_only_readiness(monkeypatch):
+    monkeypatch.setenv("VIRUSTOTAL_API_KEY", "PRIVATE-CONFIG-KEY-SENTINEL")
+    response = CLIENT.get("/api/extension/config")
+    assert response.json() == {"virustotal_configured": True}
+    assert response.headers["cache-control"] == "no-store"
+    assert "PRIVATE-CONFIG" not in response.text
+    assert (
+        CLIENT.get(
+            "/api/extension/config", headers={"Host": "evil.test:8000"}
+        ).status_code
+        == 403
+    )

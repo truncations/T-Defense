@@ -21,6 +21,8 @@ from pydantic import (
     model_validator,
 )
 
+from app.reputation import REPUTATION, api_key
+
 router = APIRouter()
 PAIR_KEY = secrets.token_urlsafe(32)
 LOCK = Lock()
@@ -52,7 +54,7 @@ def origin_only(value: str | None) -> str | None:
 class Signal(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     element_id: str = Field(pattern=r"^td_[0-9]+$", max_length=32)
-    kind: Literal["form", "link", "message"]
+    kind: Literal["form", "link", "message", "page"]
     target_origin: str | None = Field(default=None, max_length=300)
     displayed_origin: str | None = Field(default=None, max_length=300)
     sensitive_fields: list[
@@ -62,6 +64,9 @@ class Signal(BaseModel):
     sensitive_request: bool = False
     gift_code_request: bool = False
     has_link: bool = False
+    email_context: bool = False
+    account_action: bool = False
+    wrapped_destination: bool = False
     download: bool = False
     file_kind: Literal[
         "exe",
@@ -183,6 +188,12 @@ def assess_snapshot(snapshot: Snapshot) -> dict:
                 "This content asks for gift-card codes or PINs. Verify the request independently.",
                 "high",
             )
+        if item.email_context and item.account_action and item.has_link:
+            add(
+                "email-account-action",
+                "This email asks you to act on an account through a link. Verify the destination independently; legitimate emails can do this too.",
+                "low",
+            )
         if item.download:
             if item.file_kind != "other":
                 add(
@@ -289,6 +300,15 @@ def stats(request: Request):
         return dict(STATS)
 
 
+@router.get("/api/extension/config")
+def extension_config(request: Request):
+    local_host(request)
+    return JSONResponse(
+        {"virustotal_configured": bool(api_key())},
+        headers={"Cache-Control": "no-store"},
+    )
+
+
 @router.post("/api/page/assess")
 async def assess_page(request: Request):
     authorize(request)
@@ -307,6 +327,9 @@ async def assess_page(request: Request):
             "Invalid structural signal snapshot; page text and form values are not accepted.",
         ) from error
     result = assess_snapshot(snapshot)
+    result = await REPUTATION.enrich(
+        snapshot, result, request.headers.get("x-tdefense-reputation") == "enabled"
+    )
     with LOCK:
         STATS["processed_scans"] += 1
         STATS["warning_findings"] += result["warning_count"]
