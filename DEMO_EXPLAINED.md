@@ -1,3 +1,15 @@
+# Current demo: browser Page Guard
+
+The primary demo is now the actual Chrome/Edge extension. Open the root dashboard, load the unpacked extension, pair with the backend and activate monitoring on a website. The extension observes DOM changes and periodically sends structural signals to `/api/page/assess`. Python applies explicit rules and returns warning evidence and next steps. No recorded verdict drives this flow.
+
+Use `/extension-lab` for repeatable synthetic risks. Add a message, sensitive form or attachment: the on-page pink warning expands without changing tabs. Hover a flagged element, use Show element, or try its link/form to see the review pause. The lab independently cancels outbound actions even after Continue once. The dashboard count and overlay scan ID/time demonstrate actual backend work. You can activate the same extension on a regular public website yourself; it may produce no warning if no rule matches.
+
+This is structural risk detection, not comprehensive phishing detection. The sponsor classifier is still missing. No accuracy metrics are claimed. No typed values or raw messages are sent, and the backend does not browse real sites. Permission is per activated origin. See README and extension/README for installation and limits.
+
+---
+
+The following describes the previous SMS concept, now at `/sms-demo`.
+
 # What T-Defense does now
 
 The phone is a simulated SMS inbox, not your real messages. Choose Obvious scam, Hidden risk, or Plain bill notice. Hover/focus/tap a badge for text reasons. Follow the check link to see page evidence and limits.

@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app import store
+from app.page_guard import router as page_guard_router
 from app.recovery import checklist
 from app.safety import allowed_url
 from app.scenarios import load_scenarios
@@ -19,6 +20,7 @@ from app.verdict import combine
 
 ROOT = Path(__file__).resolve().parent.parent
 app = FastAPI(title="T-Defense", docs_url=None, redoc_url=None)
+app.include_router(page_guard_router)
 
 
 @app.get("/api/health")
@@ -126,9 +128,27 @@ def reset():
     return {"reset": True}
 
 
-@app.get("/")
+@app.get("/sms-demo")
 def phone():
     return FileResponse(ROOT / "static/phone.html")
+
+
+@app.get("/")
+@app.get("/extension")
+def extension_dashboard():
+    return FileResponse(
+        ROOT / "static/extension.html",
+        headers={
+            "Cache-Control": "no-store",
+            "X-Frame-Options": "DENY",
+            "Content-Security-Policy": "frame-ancestors 'none'",
+        },
+    )
+
+
+@app.get("/extension-lab")
+def extension_lab():
+    return FileResponse(ROOT / "static/extension-lab.html")
 
 
 @app.get("/check/{link_id}")

@@ -24,7 +24,7 @@ def test_replay_demo(server):
 
         context.route("**/*", route)
         page = context.new_page()
-        page.goto(server)
+        page.goto(server + "/sms-demo")
         expect(page.locator(".message")).to_have_count(12)
         expect(page).to_have_title("T-Defense · Interactive scam-text demo")
         expect(page.get_by_role("heading", name="Start the demo")).to_be_visible()
@@ -110,7 +110,7 @@ def test_replay_demo(server):
         expect(page.locator("#verdict")).to_have_text("We couldn’t check this")
         expect(page.locator("#confidence")).to_contain_text("expired")
         page.set_viewport_size({"width": 1440, "height": 1100})
-        page.goto(server)
+        page.goto(server + "/sms-demo")
         expect(page.locator(".message")).to_have_count(12)
         expect(page.locator("#risk-notification")).to_be_visible()
         page.screenshot(path="demo_backup/gate-phone-desktop.png", full_page=True)
@@ -127,10 +127,14 @@ def test_replay_demo(server):
         expect(first_details).to_be_visible()
         first_badge.press("Escape")
         expect(first_details).to_be_hidden()
-        first_check=page.locator('.message[data-message-id="team-001"] a').get_attribute("href")
+        first_check = page.locator(
+            '.message[data-message-id="team-001"] a'
+        ).get_attribute("href")
         page.locator("#reset-demo").click()
         expect(page.locator(".message")).to_have_count(12)
-        expect(page.locator('.message[data-message-id="team-001"] a')).not_to_have_attribute("href",first_check)
+        expect(
+            page.locator('.message[data-message-id="team-001"] a')
+        ).not_to_have_attribute("href", first_check)
         assert not external, external
         context.close()
         browser.close()

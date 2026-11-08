@@ -195,7 +195,7 @@ def test_live_browser_shows_observed_warning(server):
     with sync_playwright() as p:
         browser = p.chromium.launch()
         page = browser.new_page(viewport={"width": 380, "height": 900})
-        page.goto(server)
+        page.goto(server + "/sms-demo")
         expect(page.locator(".message")).to_have_count(12)
         expect(page.locator(".mode-banner")).to_contain_text("LIVE LOCAL CHECKS")
         page.locator('[data-demo-scenario="team-002"]').click()

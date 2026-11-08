@@ -166,3 +166,16 @@ Clears the store. Returns `{"reset": true}`.
 - Future Stage0 normalization target: data/starter_eval.json, a list of {source:"starter",text,label?}, with observed labels normalized to scam/legitimate. --tuned applies seed42 70/30 holdout, scoring only30%; --sample is a smoke-test option. Actual input mapping must come from starter inspection, not guesses about the original files.
 - Confusion tables include an explicit abstained column. Abstentions count as misses for overall accuracy and scam recall; resolved-only accuracy and abstention rate are reported separately.
 - Mock-page expected/observed outcomes remain a separate table labeled not an accuracy claim. Attachment contents remain unscanned.
+
+
+## Browser Page Guard extension (user-directed scope revision, 2026-11-07)
+
+Primary GET `/` and `/extension` serve extension setup; GET `/sms-demo` preserves the previous phone UI. GET `/extension-lab` serves synthetic dynamic scenarios. GET `/api/extension/download` returns a ZIP containing fixed public extension files only.
+
+GET `/api/extension/pairing` is local/same-origin only and returns `{pairing_code}` with no-store; this generated process key is never a committed config secret. POST `/api/extension/connect` and `/api/page/assess` require `X-TDefense-Key` plus `X-TDefense-Client` (extension ID); present Origin must match that extension. Host is fixed loopback port8000. No permissive CORS is enabled.
+
+POST `/api/page/assess`: strict `{page_origin, reason, elements, coverage}`. At most200 elements,128KiB. Each signal includes opaque element_id, kind(form/link/message), standardized urgency/sensitive_request/gift_code_request/has_link/download flags, file_kind, target_scheme, target_origin, displayed_origin and sensitive_fields kinds. Origins have no credentials/path/query/fragment. Raw text, page HTML and form values are forbidden extra fields. Coverage reports elements_seen/elements_scanned/truncated/frames_unchecked. Exact enums/constraints are defined by Pydantic models in app/page_guard.py.
+
+Returns scan_id, scanned_at, engine, status, verdict, warning_count, warnings, coverage and unknowns. Each warning identifies its element_id, rule IDs, title, severity, evidence and next_step. No match means no observed signs, never a safety guarantee; limited coverage is inconclusive. Backend errors are unavailable in the overlay. GET `/api/extension/stats` contains aggregate scan/finding counters and last time only. Snapshots/origins are not retained.
+
+The browser worker calls only the fixed local backend. The content script keeps node mappings and locally derived text signatures; neither raw text nor signatures leave the page. Result rendering checks current snapshot identity; guarded overrides bind to destination/method metadata. Background completions must match the current run and document. This API never invokes the legacy local-only investigator or fetches real destinations.

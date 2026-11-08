@@ -1,5 +1,6 @@
 # T-Defense progress
 
+- Current primary milestone: Browser Page Guard extension (user-directed pivot); DONE locally;107tests pass, reviewed; publication follows.
 - Setup: DONE
 - Stage 0: DEFERRED — starter files pending; user authorized placeholder adapter.
 - Stage 1: DONE
@@ -107,3 +108,14 @@
 - Original local stage history is preserved on local/stage-history-2026-11-07 (including all passing stage commits and binary demo backups). Public GitHub uses reviewed source checkpoint commits because the native Windows Git credential helper is unavailable.
 - This publication record will be published as a documentation-only follow-up; local main will then align to the verified public source tree without deleting working files. The archive branch will retain the publication-log commit too.
 - Current result: local demo ready,89tests pass,3freshreplayrehearsals pass, live investigations/recovery/warnings implemented. Sponsor integration and actual sponsor-data metrics remain pending; no placeholder accuracy claims.
+
+
+## Browser Page Guard — USER-DIRECTED PIVOT (2026-11-07)
+- Replaced primary mock-SMS presentation with a real Chrome/Edge MV3 extension, downloadable bundle, local setup/pairing dashboard and dynamic synthetic test lab. Previous concept remains /sms-demo. Kit extension cut superseded by explicit user request; stage-runner/reviewer/progress process retained.
+- Browser observes initial/manual, DOM mutation, visible-tab8second periodic and concerning interaction events. Local collector derives bounded message/link/form/attachment metadata. Worker sends only standardized flags, input kinds and origins to authenticated fixed-loopback /api/page/assess; Python applies real structural rules, returns evidence/nextsteps and unique scanIDs. No real-page fetches or form submissions by backend; legacy local Decoy allowlist unchanged.
+- Prominent pink overlay expands for fresh risks and recycled messages; hover explains findings, Show element locates them, toolbar independently shows count. Supported concerning clicks/submissions pause for review with explicit Continue once. Reduced-motion styling and fresh-warning live announcement included. Form values, passwords, raw messages/HTML/cookies and full URL queries are never transmitted. Backend retains only aggregate counters, not snapshots/history. Pairing is process/browser-session-only.
+- Review fixes: invalidate pending completions on navigation/run/document changes; verify current snapshot before rendering; pending changes never retain a clean indicator; unavailable clears old findings; overrides bind resolved destination/method/base metadata. Include submitter formaction destinations and external form-associated inputs. Mark root/control budget truncation and frames inside discovered components as partial.
+- Verification so far: focused17tests passed actual MV3 worker/content/backend traffic. Initial full106tests passed in133.51s; final full107tests passed in168.91s including actual HTTPS collector regression for form overrides/external fields and open-root coverage. Ruff check/format and JavaScript syntax checks clean. Read-only actual example.com check reached backend (no forms/links submitted); automation test copy grants only example.com, shipped extension relies on user-invoked activeTab.
+- Final source safety review: no blockers. Demo tester source PASS (internal typography/alert fixes verified); actual screen-reader audio not tested. Final regression condition satisfied. Fresh setup/dashboard/download and preserved SMS route checks passed. Finalsource example.com smoke completed a real backend check without submissions.
+- Honest limits: temporary structural rules, legitimate-page false alarms and missed risks possible; no classifier accuracy claims. Frames/closed trees/attachment contents unscanned, bounded page coverage. Earlier page handlers/programmatic navigation/submission and middle/context-menu actions can evade interception. Page overlays can be tampered with; toolbar remains independent. No store publication or production-ready claim.
+- Starter classifier/dataset/taxonomy still absent; Stage0 and sponsor metrics remain deferred. User-facing ZIP/quickstart/screenshots prepared outside public source. Passing local milestone is ready to commit; publication is pending until the guarded GitHub update succeeds.

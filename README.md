@@ -1,6 +1,20 @@
 # T-Defense
 
-A local mock messaging app that warns before you follow a concerning link or share information. The replay GATE is approved; **live Decoy Twin checks now run against fictional local demo pages**.
+A Chrome/Edge browser extension that checks the page you activate, watches new content and periodically reassesses links, messages and sensitive forms. A prominent pink overlay explains concerning signs and pauses supported risky clicks/submissions for review. **Actual extension signals are assessed by the local FastAPI backend; these page results are not replay fixtures.**
+
+## Browser extension: current primary demo
+
+1. Start the local backend using the command below, then open http://127.0.0.1:8000/.
+2. Download/extract the extension, or use this repository's `extension/` folder directly. In `chrome://extensions` or `edge://extensions`, enable Developer mode, choose Load unpacked and select the folder containing `manifest.json`.
+3. Copy the pairing code from the dashboard, open the T-Defense toolbar popup, paste it and select Pair backend. Restarting the browser/backend requires pairing again.
+4. Visit an ordinary HTTP/HTTPS website, open the popup and Start monitoring this page. No all-sites permission is requested: inspection uses a temporary user-granted `activeTab` permission. Activate again after crossing to another site.
+5. To see warnings reliably, open http://127.0.0.1:8000/extension-lab, activate monitoring there and add a synthetic message, form or attachment. New warnings expand the overlay; hover a flagged element for reasons. Every completed result has a real backend scan ID/time; the setup dashboard counts completed checks.
+
+Checks repeat about every 8 seconds while visible and after DOM changes. Pause removes monitoring. The engine uses temporary structural rules, not the pending sponsor classifier. It can miss phishing and can warn on legitimate pages. It inspects at most 200 candidates and bounded open component trees; frames, closed components and attachment contents remain unscanned. Programmatic navigation/form.submit, earlier page handlers, middle/context-menu clicks and unsupported frames may evade action interception. A page can tamper with injected overlays: also check the genuine toolbar badge/popup. This is a developer prototype, not a production security guarantee.
+
+The extension reads visible text locally to derive flags but sends only standardized flags, field kinds and site origins to the fixed loopback backend. It never sends raw messages, HTML, typed values, passwords, cookies or full URLs/queries. Python never fetches real sites or submits their forms. Pairing is session-only; browsing snapshots are not persisted. The local Decoy Twin described below remains a separate fictional-page-only demonstration.
+
+Extension implementation and permissions: [extension/README.md](extension/README.md). The previous SMS concept is preserved at http://127.0.0.1:8000/sms-demo.
 
 All 12 messages are synthetic (`source: "placeholder"`). Text assessment still uses temporary rules because the provided classifier, dataset and taxonomy have not arrived. No accuracy claims or placeholder-data metrics are reported.
 
@@ -13,9 +27,9 @@ $env:DEMO_MODE = "live"
 .\.venv\Scripts\python.exe -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --no-access-log
 ```
 
-Open http://localhost:8000/. Stop with Ctrl+C. Run live mode without `--reload` on Windows. Use `$env:DEMO_MODE = "replay"` for the backup mode; it reuses clearly labeled browser evidence recorded on our local mock pages. The app reads environment variables and does not automatically load `.env`. The default when unset remains replay.
+Open http://127.0.0.1:8000/ for extension setup; `/sms-demo` for the previous concept. Stop with Ctrl+C. Run live mode without `--reload` on Windows. Use `$env:DEMO_MODE = "replay"` for the backup mode; it reuses clearly labeled browser evidence recorded on our local mock pages. The app reads environment variables and does not automatically load `.env`. The default when unset remains replay.
 
-## Try it
+## Previous SMS concept
 
 - **Obvious scam:** urgent text plus a page requesting fake credentials and payment details.
 - **Hidden risk:** ordinary-looking tracking text; the page redirects and requests a card.
@@ -33,7 +47,7 @@ Use Python 3.10+ and Git. Downloads require network access; no global packages a
 python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 $env:PLAYWRIGHT_BROWSERS_PATH = "$pwd\.playwright"
-.\.venv\Scripts\python.exe -m playwright install chromium --only-shell
+.\.venv\Scripts\python.exe -m playwright install chromium
 New-Item -ItemType Directory -Path starter -Force
 ```
 
@@ -46,9 +60,9 @@ On Unix use `.venv/bin/python` and `export DEMO_MODE=live`. Activation is option
 .\.venv\Scripts\python.exe -m ruff check .
 ```
 
-Stop any manual server first: tests own port 8000. They cover live local checks, replay flows, strict evidence, URL boundaries, blocked requests, popups/frames, worker timeout, mobile layout and warning interactions. The suite includes an intentional slow-page test. If the sandbox's temporary directory is blocked, create `work/tmp` and set `$env:TEMP = "$pwd\work\tmp"; $env:TMP = $env:TEMP`.
+Stop any manual server first: tests own port 8000. They include the actual MV3 extension in bundled Chromium, live local checks, replay flows, strict evidence, URL boundaries, blocked requests, popups/frames, worker timeout, mobile layout and warning interactions. The suite includes an intentional slow-page test. If the sandbox's temporary directory is blocked, create `work/tmp` and set `$env:TEMP = "$pwd\work\tmp"; $env:TMP = $env:TEMP`.
 
-## How it works
+## Previous SMS / local Decoy implementation
 
 FastAPI serves plain HTML/CSS/JavaScript and JSON APIs. `triage(text)` returns text clues and check tokens. Risky or uncertain links start background jobs; other links start when their check page opens. Jobs run Playwright's fixed script in a bounded worker process, with up to two concurrent investigations. Cache entries share observed results for an exact URL/mode during this server run. Store locks are released during browser work; reset-generation checks prevent stale jobs restoring cleared state.
 
@@ -74,7 +88,7 @@ Place provided files unchanged in `starter/`, then run `$starter-inspector`. Sta
 
 The repository is https://github.com/truncations/T-Defense.git, with its existing MIT license/history retained. GATE approval permits publication. Native Git credentials are unavailable in this session; the connected GitHub account can publish the reviewed source snapshot. Original local stage commits and generated media are preserved on a local stage-history archive branch when aligning the source branch. The reviewed source is now published; the initial verified checkpoint is 0e7bd1178fe75ea298b921f9cabdec8667ef3347. Original local history/media are on local/stage-history-2026-11-07. Publication details are recorded in PROGRESS.md. Project-local rules, seven skills and two reviewer roles continue to govern stage commits; use `$t-defense-stage-runner` to resume.
 
-Screenshots and the current silent walkthrough are generated locally in `demo_backup/`; binary backups are excluded from public source publication. Their own on-screen labels identify live versus recorded replay evidence. Reset demo on the homepage clears stored checks and issues fresh tokens.
+Screenshots and the current silent walkthrough are generated locally in `demo_backup/`; binary backups are excluded from public source publication. Their own on-screen labels identify live versus recorded replay evidence. Reset demo on `/sms-demo` clears stored checks and issues fresh tokens.
 
 Credits: teammate build kit for the plan/workflow. Sponsor starter files are not yet supplied or integrated. Lumora Wireless is fictional.
 

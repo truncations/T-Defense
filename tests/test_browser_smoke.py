@@ -12,7 +12,7 @@ def test_browser_smoke(server):
         page.on("request", lambda request: requests.append(request.url))
         page.goto(server + "/mock/lumora/index.html")
         expect(page).to_have_title("Lumora Wireless DEMO · Demo pages")
-        page.goto(server)
+        page.goto(server + "/sms-demo")
         expect(page.locator("#health")).to_have_text("Backend OK")
         expect(page.locator(".message")).to_have_count(12)
         expect(page.locator(".message").first.locator(".badge")).to_have_text(

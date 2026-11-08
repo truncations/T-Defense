@@ -3,7 +3,7 @@
 Codex reads this file from the repo root. Keep it short. Full plan: `teammate-build-kit/BUILD_OVERVIEW.md`.
 
 ## Goal
-A hackathon demo (hackUTD 2026, T-Mobile Safe Signal track). A mock phone shows synthetic text messages. Each message is triaged with T-Mobile's baseline classifier. Risky links are rewritten to a check page. A scripted "Decoy Twin" opens the link first in a headless browser, but only against our own demo pages. The user then sees a verdict card with evidence, confidence, what we could not check, and next steps.
+A hackathon prototype (hackUTD 2026, T-Mobile Safe Signal track). The primary product is a user-activated Chrome/Edge extension that checks current-page structural risk signals with a local FastAPI backend and shows prominent on-page warnings. The previous synthetic SMS concept and strictly local fictional-page Decoy Twin remain at /sms-demo. Sponsor classifier/data/taxonomy are pending; current rules are temporary and have no claimed accuracy.
 
 The builder is a beginner. Explain what you did and why in plain words after every task. Prefer the simplest code that works, because a reliable demo beats a clever one.
 
@@ -89,3 +89,12 @@ Activate the venv first. Windows PowerShell: `.\.venv\Scripts\Activate.ps1`. mac
 - User approved the replay GATE and instructed continued building. Stage3 and subsequent kit work are now authorized. The earlier stop-at-GATE restriction is satisfied.
 - Earlier conditional GitHub push authorization now applies to passing reviewed milestones. Check secrets and remote history, never force push. Credential-manager errors must be reported honestly.
 - Prioritize standout warnings before concerning links, attachments or information requests. Clearly distinguish observed download attempts from unscanned attachment contents. Local-only investigator policy remains mandatory.
+
+
+## User-directed browser-extension pivot (2026-11-07)
+- The requested primary product is now a Chrome/Edge ManifestV3 extension that inspects the user-activated current website, repeats checks and watches newly added content, then shows prominent pink on-page warnings. This supersedes the kit's decision to cut extensions and the mock-SMS-only product scope.
+- Native extension JavaScript/HTML/CSS is authorized; keep the existing Python/FastAPI backend. No Node build system or new application dependencies.
+- Real-page inspection is opt-in and local: derive bounded structural risk flags in the extension; send only standardized flags and origins to the loopback backend. Never collect or transmit passwords, typed/form values, raw message text, cookies or full page HTML. No persistence of browsing content.
+- The local Decoy Twin's original allowlist remains unchanged. The new page-assessment endpoint never fetches or submits to real websites and never types canaries into them.
+- Use synthetic pages for adversarial tests; a benign public-page smoke test may read structural metadata without submitting forms. Keep rules/coverage limits honest; do not promise detection of all phishing.
+- Primary homepage becomes extension setup/test dashboard. Preserve the prior SMS demo at /sms-demo. Use the same reviewer/tester checks, progress records and passing local commits before publication.

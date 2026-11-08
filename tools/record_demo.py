@@ -78,7 +78,7 @@ def main():
                 page.wait_for_timeout(seconds * 1000)
 
             def home():
-                page.goto(BASE)
+                page.goto(BASE + "/sms-demo")
                 expect(page.locator(".message")).to_have_count(12)
 
             def card(scenario, title):
