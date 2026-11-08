@@ -185,12 +185,8 @@ def test_email_priority_live_reputation_and_persistent_review(
             row.click()
             expect(overlay.locator("#facts")).to_contain_text("VirusTotal")
             page.locator("#email-link").evaluate("node=>node.remove()")
-            expect(overlay.locator("#finding-status")).to_contain_text(
-                "No longer on the page", timeout=12000
-            )
-            expect(overlay.locator("#findings")).to_contain_text("previous evidence")
-            overlay.locator("#scan").click()
             expect(overlay.locator(".finding-row")).to_have_count(0, timeout=12000)
+            expect(overlay.locator(".highlight")).to_have_count(0)
             page.locator(".a3s").evaluate(
                 'node=>node.innerHTML=\'<p>Hello, ordinary content.</p><a id="clean-link" href="https://public-clean.com/hello">Read more</a>\''
             )
@@ -201,7 +197,7 @@ def test_email_priority_live_reputation_and_persistent_review(
             expect(overlay.locator("#reputation")).to_contain_text(
                 "key is not configured", timeout=12000
             )
-            expect(overlay.locator("#activity")).to_contain_text("limited coverage")
+            expect(overlay.locator("#coverage")).to_contain_text("incomplete")
             for mode, text in [
                 ("quota", "quota reached"),
                 ("timeout", "unavailable"),
@@ -216,9 +212,7 @@ def test_email_priority_live_reputation_and_persistent_review(
                     text, timeout=12000
                 )
                 if mode != "reports":
-                    expect(overlay.locator("#activity")).to_contain_text(
-                        "limited coverage"
-                    )
+                    expect(overlay.locator("#coverage")).to_contain_text("incomplete")
             # Opt-out during an in-flight check must stay off after its response.
             worker.evaluate("""()=>{globalThis.originalRequest=requestBackend;
               requestBackend=async(...args)=>{const value=await originalRequest(...args);

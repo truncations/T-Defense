@@ -2,11 +2,11 @@
   if (globalThis.TDefenseSnapshot) return;
   const ids = new WeakMap(); let nextId = 0;
   const excluded = 'input,textarea,select,[contenteditable]:not([contenteditable="false"]),#tdefense-page-guard,script,style,noscript';
-  function safeText(node, limit = 1200) {
+  function safeText(node, limit = 1200, budget=180) {
     if (!node || node.closest?.(excluded)) return '';
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
     let text = ''; let count = 0;
-    while (walker.nextNode() && text.length < limit && count++ < 180) {
+    while (walker.nextNode() && text.length < limit && count++ < budget) {
       const parent = walker.currentNode.parentElement;
       if (!parent || parent.closest(excluded)) continue;
       const style = getComputedStyle(parent);
@@ -24,6 +24,9 @@
     const account=/(?:connect|link|verify|confirm|unlock|authorize|log\s?in|sign\s?in).{0,45}(?:your |the )?(?:[a-z0-9]+ )?account|(?:scan|use).{0,25}qr.{0,25}(?:log|account|verify)/.test(t);
     const claim=/claim|redeem|unlock|collect|activate/.test(t);
     const pressure=/urgent|immediately|act now|before.{0,40}expir|offer.{0,25}expir|limited.{0,25}(?:offer|time|spots|subscriptions)|only \d+|first \d+|giving away \d+|expires?/.test(t);
+    const cryptoTransfer=/(?:send|transfer|deposit).{0,30}\d+(?:[.,]\d+)?\s*(?:eth|btc|usdt|usdc|bitcoin|ethereum|crypto)\b/.test(t);
+    const multiplier=/(?:receive|get|earn).{0,30}\d+(?:[.,]\d+)?\s*(?:eth|btc|usdt|usdc|bitcoin|ethereum)|\b\d{1,3}x\b|double|triple|multiply/.test(t);
+    const instant=/instantly|instant|in (?:\d+ )?minutes|giveaway/.test(t);
     const money=/(?:send|pay|transfer|deposit|wire|buy).{0,45}(?:money|funds|crypto|bitcoin|fee|deposit|gift.?card|dollars|\$)|(?:pay|deposit|transfer)\s*(?:now|today|\$?\d+)/.test(t);
     const software=/crack(?:ed)?|keygen|pirated|mod menu|game cheats?|free cheats?|license bypass/.test(t);
     const install=/download|install|run|execute/.test(t);
@@ -44,6 +47,7 @@
     const sensitive=/password|verification code|one.time code|security code/.test(t);
     const relative=/(?:your|i'm|i am).{0,18}(?:son|daughter|mother|father|brother|sister|relative)|family emergency/.test(t);
     const signals=[];const add=(name,condition)=>{if(condition)signals.push(name);};
+    add('crypto-multiplier',cryptoTransfer && multiplier && instant);
     add('reward-account-lure',reward && account && (claim || pressure));
     add('reward-pressure',reward && claim && pressure);
     add('software-bait',software && install);
@@ -120,6 +124,14 @@
       const kind=isForm?'form':isLink?'link':'message';
       const context=isLink?(node.closest(messageSelector) || node.closest('li,p') || node):node;
       const text=safeText(context,4000); const localFlags=flags(text);
+      const emailBody=node.closest(emailSelector);const emailText=emailBody?safeText(emailBody,4000):'';
+      const commercial=/stop overpaying|programs? starting|prices? start|transparent pricing|no hidden fees|limited.time sale|buy now|special offer|\bdiscount\b|unsubscribe|weight.loss|glp.?1|medications?/.test(emailText.toLowerCase());
+      const calls= emailBody?Array.from(emailBody.querySelectorAll('a')).filter(a=>/get started|shop now|buy now|order now|claim offer/i.test(safeText(a,100))).length:0;
+      const emailLinks=emailBody?.querySelectorAll('a[href]').length || 0;
+      const largeLinkedImage=emailBody?Array.from(emailBody.querySelectorAll('a[href] img')).some(img=>{const box=img.getBoundingClientRect();return box.width>=250 && box.height>=150;}):false;
+      if(emailBody && location.hostname==='mail.google.com' && /^#spam(?:\/|$)/.test(location.hash))localFlags.social_signals.push('mail-spam-folder');
+      if(emailBody && commercial && (calls>=2 || /\$\s*\d+/.test(emailText)))localFlags.social_signals.push('promotional-email');
+      if(emailBody && largeLinkedImage && emailLinks && emailText.length<180)localFlags.social_signals.push('image-heavy-email');
       const item={kind,...localFlags,email_context:!!node.closest(emailSelector),wrapped_destination:false,has_link:isLink || !!node.querySelector('a[href]'),download:false,file_kind:'other',target_scheme:'other',target_origin:null,displayed_origin:null,sensitive_fields:[]};
       if (isForm) {
         const controls=Array.from(node.elements);if(controls.length>200)domTruncated=true;
@@ -149,5 +161,38 @@
     const pageItem={element_id:identify(document.documentElement,'page:'+location.origin),kind:'page',target_origin:location.origin};elements.push(pageItem);nodes.set(pageItem.element_id,document.documentElement);
     return {snapshot:{page_origin:location.origin,reason,elements,coverage:{elements_seen:Math.min(candidates.length+1,100000),elements_scanned:elements.length,truncated:candidates.length>199 || domTruncated,frames_unchecked:Math.min(roots.reduce((count,root)=>count+root.querySelectorAll('iframe,frame').length,0),10000)}},nodes};
   }
-  globalThis.TDefenseSnapshot={collect,describe:node=>safeText(node,90)};
+  function reviewTarget(node){return node?.closest(messageSelector) || node?.closest('form') || node;}
+  function identitySource(node){
+    const target=reviewTarget(node);if(!target || target===document.documentElement || !target.isConnected || !target.getClientRects().length)return null;
+    const kind=target.tagName==='FORM'?'form':target.tagName==='A'?'link':'message';
+    const walker=document.createTreeWalker(target,NodeFilter.SHOW_TEXT);let textNodes=0;while(walker.nextNode())if(++textNodes>1800)return null;
+    const text=safeText(target,16385,1801);if(text.length>16384 || target.querySelectorAll('*').length>1200)return null;
+    // Include resolved destinations and security-relevant metadata, but never input values.
+    const forms=[...(target.tagName==='FORM'?[target]:[]),...target.querySelectorAll('form')];
+    const controls=[...new Set([target,...target.querySelectorAll('a[href],form,input,button,img'),...forms.flatMap(form=>Array.from(form.elements))])];if(controls.length>300)return null;
+    const attributes=controls.map(element=>[element.tagName,element.href || '',element.action || '',element.formAction || '',element.method || '',element.formMethod || '',element.target || '',element.formTarget || '',element.getAttribute('download') || '',element.getAttribute('type') || '',element.getAttribute('name') || '',element.getAttribute('autocomplete') || '',element.getAttribute('src') || '',element.getAttribute('alt') || '',element.tagName==='INPUT'?element.id:'',element.getAttribute('placeholder') || '',!!element.disabled,!!element.readOnly,!!element.required,element.enctype || '',element.getAttribute('pattern') || '',element.form?forms.indexOf(element.form):-1,...Array.from(element.labels || []).map(label=>safeText(label,16385,1801))]);
+    if(attributes.some(values=>values.some(value=>typeof value==='string' && value.length>16384)))return null;
+    const source=JSON.stringify([location.origin,kind,text,attributes]);if(source.length>65536)return null;
+    return {source,origin:location.origin,kind,preview:safeText(target,100),target};
+  }
+  async function identity(node){
+    const descriptor=identitySource(node);if(!descriptor || !crypto.subtle)return null;
+    const hash=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(descriptor.source));
+    const fingerprint=Array.from(new Uint8Array(hash),byte=>byte.toString(16).padStart(2,'0')).join('');
+    return {...descriptor,fingerprint};
+  }
+  async function filterTrusted(collected,trusted){
+    if(!trusted.size)return {...collected,ignoredNodes:new Set(),trustedTargets:new Map()};
+    const cache=new Map(),ignoredNodes=new Set(),trustedTargets=new Map(),elements=[];
+    for(const item of collected.snapshot.elements){
+      const node=collected.nodes.get(item.element_id);const target=reviewTarget(node);
+      if(item.kind==='page'){elements.push(item);continue;}
+      if(!cache.has(target))cache.set(target,identity(target));
+      const descriptor=await cache.get(target);
+      if(descriptor && trusted.has(descriptor.fingerprint)){ignoredNodes.add(node);trustedTargets.set(descriptor.target,descriptor.source);}else elements.push(item);
+    }
+    const nodes=new Map(elements.map(item=>[item.element_id,collected.nodes.get(item.element_id)]));
+    return {snapshot:{...collected.snapshot,elements,coverage:{...collected.snapshot.coverage,elements_scanned:elements.length,trusted_skipped:ignoredNodes.size}},nodes,ignoredNodes,trustedTargets};
+  }
+  globalThis.TDefenseSnapshot={collect,identity,identitySource,filterTrusted,reviewTarget,describe:node=>safeText(node,90)};
 })();

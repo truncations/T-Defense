@@ -233,3 +233,29 @@ def test_page_hostname_is_not_crowded_out_by_many_links(monkeypatch):
     asyncio.run(service.enrich(model, page_guard.assess_snapshot(model), True))
     assert requested[:2] == ["public-link-0.com", "public-page.com"]
     assert len(requested) == 16
+
+
+def test_strong_local_crypto_warning_does_not_need_provider(monkeypatch):
+    service = reputation.DomainReputation()
+
+    async def forbidden(*args):
+        raise AssertionError(
+            "Local strong findings must not trigger an external lookup"
+        )
+
+    monkeypatch.setattr(service, "lookup", forbidden)
+    body = snapshot(
+        [
+            {
+                "element_id": "td_1",
+                "kind": "message",
+                "social_signals": ["crypto-multiplier"],
+            }
+        ]
+    )
+    model = page_guard.Snapshot.model_validate(body)
+    result = asyncio.run(service.enrich(model, page_guard.assess_snapshot(model), True))
+    assert (
+        result["warning_count"] == 1
+        and result["reputation"]["status"] == "local_findings"
+    )

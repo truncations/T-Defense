@@ -22,7 +22,7 @@ from pydantic import (
 )
 
 from app.reputation import REPUTATION, api_key
-from app.social_rules import SOCIAL_RULES
+from app.social_rules import SOCIAL_RULES, SPAM_SIGNALS
 
 router = APIRouter()
 PAIR_KEY = secrets.token_urlsafe(32)
@@ -70,6 +70,10 @@ class Signal(BaseModel):
     wrapped_destination: bool = False
     social_signals: list[
         Literal[
+            "mail-spam-folder",
+            "crypto-multiplier",
+            "promotional-email",
+            "image-heavy-email",
             "reward-account-lure",
             "reward-pressure",
             "software-bait",
@@ -85,7 +89,7 @@ class Signal(BaseModel):
             "emergency-identity-pressure",
             "upfront-release-fee",
         ]
-    ] = Field(default_factory=list, max_length=14)
+    ] = Field(default_factory=list, max_length=18)
     download: bool = False
     file_kind: Literal[
         "exe",
@@ -118,6 +122,7 @@ class Coverage(BaseModel):
     elements_seen: int = Field(ge=0, le=100000)
     elements_scanned: int = Field(ge=0, le=200)
     truncated: bool = False
+    trusted_skipped: int = Field(default=0, ge=0, le=200)
     frames_unchecked: int = Field(default=0, ge=0, le=10000)
 
 
@@ -250,6 +255,9 @@ def assess_snapshot(snapshot: Snapshot) -> dict:
                 {
                     "element_id": item.element_id,
                     "severity": severity,
+                    "category": "possible_spam"
+                    if set(rules) <= SPAM_SIGNALS
+                    else "security_risk",
                     "rules": rules,
                     "title": social_title
                     or (
@@ -377,6 +385,8 @@ def download_extension(request: Request):
     directory = Path(__file__).resolve().parent.parent / "extension"
     names = [
         "manifest.json",
+        "bootstrap.js",
+        "trust.js",
         "scanner.js",
         "background.js",
         "content.js",

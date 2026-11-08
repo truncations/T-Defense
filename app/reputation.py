@@ -189,6 +189,17 @@ class DomainReputation:
                 "domains": [],
             }
             return result
+        if any(
+            row["severity"] in {"medium", "high"}
+            and row.get("category") != "possible_spam"
+            for row in result["warnings"]
+        ):
+            result["reputation"] = {
+                "enabled": True,
+                "status": "local_findings",
+                "domains": [],
+            }
+            return result
         key = api_key()
         if not key:
             result["status"] = "partial"

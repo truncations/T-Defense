@@ -1,7 +1,7 @@
 """Read-only public-page smoke test for the actual extension and local backend.
 
 The temporary test copy grants only example.com to permit automated injection.
-The shipped manifest uses user-invoked activeTab instead of broad site access.
+The shipped manifest requests optional all-site access through Start everywhere.
 No forms are filled or submitted and no destination links are opened.
 """
 
@@ -25,7 +25,14 @@ def main():
     manifest = json.loads((copy / "manifest.json").read_text())
     manifest["host_permissions"].append("https://example.com/*")
     (copy / "manifest.json").write_text(json.dumps(manifest, indent=2))
-    for name in ("background.js", "scanner.js", "content.js", "popup.js"):
+    for name in (
+        "background.js",
+        "bootstrap.js",
+        "trust.js",
+        "scanner.js",
+        "content.js",
+        "popup.js",
+    ):
         assert (
             hashlib.sha256((copy / name).read_bytes()).digest()
             == hashlib.sha256((ROOT / "extension" / name).read_bytes()).digest()
@@ -70,7 +77,7 @@ def main():
                 "backend_scan_id": state["scanId"],
                 "completed_checks": state["scanCount"],
                 "warnings": state["warningCount"],
-                "test_permission": "Temporary test copy grants example.com only; shipped manifest uses activeTab",
+                "test_permission": "Temporary test copy grants example.com only; production all-site access is optional",
             }
             (ROOT / "work/public-smoke-result.json").write_text(
                 json.dumps(report, indent=2)

@@ -1,6 +1,36 @@
 """Explainable text indicators, not a diagnosis of crime or malware execution."""
 
+SPAM_SIGNALS = {"promotional-email", "image-heavy-email", "mail-spam-folder"}
+
 SOCIAL_RULES = {
+    "mail-spam-folder": (
+        "low",
+        "Your mail app is showing this message in Spam",
+        "This visible message is being viewed from a supported Gmail Spam-folder view. That classification alone does not prove phishing.",
+        "Treat the message cautiously. Verify the sender and request before following links.",
+        False,
+    ),
+    "crypto-multiplier": (
+        "high",
+        "A crypto giveaway asks you to send funds first",
+        "Requests cryptocurrency while promising a larger or multiplied return almost immediately.",
+        "Do not transfer funds through this giveaway. Verify the claim independently.",
+        False,
+    ),
+    "promotional-email": (
+        "low",
+        "Possible promotional spam",
+        "This email combines commercial pricing or sales language with repeated sign-up or purchase calls. This alone does not prove fraud.",
+        "Check whether you expected this promotion. Do not treat the advertisement as verified or follow an unwanted offer.",
+        False,
+    ),
+    "image-heavy-email": (
+        "low",
+        "Image-heavy email needs a second look",
+        "A large linked image dominates this email. Its embedded text has not been read; it may be promotional or otherwise unverified.",
+        "Review the sender and destination independently. This is a content-coverage caution, not proof of phishing.",
+        False,
+    ),
     "reward-account-lure": (
         "high",
         "A reward asks for account access",

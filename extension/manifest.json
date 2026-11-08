@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "T-Defense Page Guard",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "minimum_chrome_version": "120",
   "description": "Opt-in live page checks with local-backend phishing warnings. No passwords or form values collected.",
   "permissions": [
@@ -17,10 +17,14 @@
     "service_worker": "background.js"
   },
   "action": {
-    "default_title": "T-Defense \u2014 monitor this page",
+    "default_title": "T-Defense \u2014 continuous monitoring",
     "default_popup": "popup.html"
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'none'"
-  }
+  },
+  "optional_host_permissions": [
+    "http://*/*",
+    "https://*/*"
+  ]
 }

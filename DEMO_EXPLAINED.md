@@ -1,10 +1,10 @@
 # Current demo: browser Page Guard
 
-The primary demo is now the actual Chrome/Edge extension. Open the root dashboard, load the unpacked extension, pair with the backend and activate monitoring on a website. The extension observes DOM changes and periodically sends structural signals to `/api/page/assess`. Python applies explicit rules and returns warning evidence and next steps. No recorded verdict drives this flow.
+The primary demo is now the actual Chrome/Edge extension. Open the root dashboard, load the unpacked extension, pair with the backend and choose Start everywhere and grant optional website access. The extension observes DOM changes and periodically sends structural signals to `/api/page/assess`. Python applies explicit rules and returns warning evidence and next steps. No recorded verdict drives this flow.
 
-Use `/extension-lab` for repeatable synthetic risks. Add a message, sensitive form or attachment: the on-page pink warning expands without changing tabs. Hover a flagged element, use Show element, or try its link/form to see the review pause. The lab independently cancels outbound actions even after Continue once. The dashboard count and overlay scan ID/time demonstrate actual backend work. You can activate the same extension on a regular public website yourself; it may produce no warning if no rule matches.
+Use `/extension-lab` for repeatable synthetic risks. Add a message, sensitive form or attachment: the compact on-page indicator signals findings without changing tabs. Open ! to view all automatically highlighted elements; click a row to locate its source, or try its link/form to see the review pause. The lab independently cancels outbound actions even after Continue once. The dashboard count and overlay scan ID/time demonstrate actual backend work. You can activate the same extension on a regular public website yourself; it may produce no warning if no rule matches.
 
-This is structural risk detection, not comprehensive phishing detection. The sponsor classifier is still missing. No accuracy metrics are claimed. No typed values or raw messages are sent, and the backend does not browse real sites. Permission is per activated origin. See README and extension/README for installation and limits.
+This is structural risk detection, not comprehensive phishing detection. The sponsor classifier is still missing. No accuracy metrics are claimed. No typed values or raw messages are sent, and the backend does not browse real sites. Monitoring follows supported sites/tabs until Stop everywhere; backend pairing may need renewal after restart. Explicit toolbar-confirmed trust stores local hashes and skips unchanged content until revoked. See README and extension/README for installation and limits.
 
 ---
 

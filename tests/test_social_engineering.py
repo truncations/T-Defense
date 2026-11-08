@@ -15,6 +15,11 @@ NITRO = """FREE 3 MONTHS OF DISCORD NITRO! We are giving away 500 FREE Nitro sub
 2. Connect your Discord account.
 3. Verify your account to unlock your Nitro gift."""
 
+CRYPTO = """EXCLUSIVE CRYPTO GIVEAWAY! We are celebrating our 100K community milestone!
+Send 0.05 ETH to our verified giveaway wallet and receive 0.5 ETH instantly.
+10X YOUR CRYPTO IN MINUTES! Only 20 participants can join. The giveaway closes in 10 minutes!
+Participate here: https://ethereum-bonus.example/rewards"""
+
 
 @pytest.fixture(scope="module")
 def collector():
@@ -38,6 +43,7 @@ def collector():
 @pytest.mark.parametrize(
     "text,rule",
     [
+        (CRYPTO, "crypto-multiplier"),
         (NITRO, "reward-account-lure"),
         (
             "Only 50 prizes left! Claim your free reward before this offer expires.",
@@ -135,6 +141,7 @@ def test_unknown_social_flags_and_private_text_are_rejected():
         ]
     )
     assert post(body).status_code == 422
+
     body = snapshot(
         [
             {
@@ -146,3 +153,60 @@ def test_unknown_social_flags_and_private_text_are_rejected():
         ]
     )
     assert post(body).status_code == 422
+
+
+def test_promotional_email_is_local_spam_caution_not_proven_fraud(collector):
+    collector.set_content("""<section data-message-id="synthetic"><div class="a3s">
+    <h2>Stop Overpaying for GLP-1 Medications</h2><p>Transparent pricing. Real results. Programs starting at $99.</p>
+    <a href="https://offer.example/one">Get Started</a><a href="https://offer.example/two">Get Started</a><a href="https://offer.example/three">Get Started</a>
+    <p>No Hidden Fees. Programs from $99/month.</p></div></section>""")
+    body = collector.evaluate("()=>TDefenseSnapshot.collect('manual').snapshot")
+    result = assess_snapshot(Snapshot.model_validate(body))
+    assert result["warnings"] and all(
+        row["category"] == "possible_spam" for row in result["warnings"]
+    )
+    assert all("promotional-email" in row["rules"] for row in result["warnings"])
+
+
+def test_image_only_email_discloses_unread_content(collector):
+    collector.set_content(
+        """<div class="a3s"><a href="https://offer.example/promotion"><img src="data:image/png,synthetic" width="350" height="500"></a></div>"""
+    )
+    body = collector.evaluate("()=>TDefenseSnapshot.collect('manual').snapshot")
+    result = assess_snapshot(Snapshot.model_validate(body))
+    assert any("image-heavy-email" in row["rules"] for row in result["warnings"])
+    assert any(
+        "has not been read" in fact
+        for row in result["warnings"]
+        for fact in row["evidence"]
+    )
+
+
+def test_trusted_form_fingerprint_changes_with_associated_controls(collector):
+    collector.set_content(
+        """<form id="f" action="https://lab.example.test/save"><input type="text" name="field"><button>Save</button></form><input id="external" form="f" type="text"><button id="outside" form="f">Submit</button>"""
+    )
+    original = collector.evaluate(
+        "async()=> (await TDefenseSnapshot.identity(document.querySelector('form'))).fingerprint"
+    )
+    for script in [
+        "document.getElementById('external').placeholder='password'",
+        "document.getElementById('external').type='password'",
+        "document.getElementById('outside').setAttribute('formaction','http://other.example.test/submit')",
+        "document.getElementById('external').disabled=true",
+    ]:
+        collector.evaluate(script)
+        changed = collector.evaluate(
+            "async()=> (await TDefenseSnapshot.identity(document.querySelector('form'))).fingerprint"
+        )
+        assert changed != original
+        original = changed
+    collector.evaluate(
+        "document.getElementById('external').value='PRIVATE-TYPED-SECRET'"
+    )
+    assert (
+        collector.evaluate(
+            "async()=> (await TDefenseSnapshot.identity(document.querySelector('form'))).fingerprint"
+        )
+        == original
+    )

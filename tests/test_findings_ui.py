@@ -168,9 +168,7 @@ def test_all_markers_list_navigation_stable_count_and_manual_refresh(server, tmp
             page.locator("article").evaluate_all(
                 "nodes=>nodes.forEach(node=>node.remove())"
             )
-            expect(guard.locator("#count")).to_contain_text(
-                "previous finding", timeout=12000
-            )
+            expect(guard.locator(".finding-row")).to_have_count(0, timeout=12000)
             guard.locator("#scan").click()
             expect(guard.locator(".finding-row")).to_have_count(0, timeout=12000)
             expect(guard.locator(".highlight")).to_have_count(0)
