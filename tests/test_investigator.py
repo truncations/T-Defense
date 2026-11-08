@@ -251,10 +251,15 @@ def test_canary_detection_covers_json_text_and_embedded_values(payload):
     from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
     from threading import Thread
 
+    import httpx
+
     sent = []
 
     class Demo(BaseHTTPRequestHandler):
         def do_GET(self):
+            if self.path != "/mock/lumora/canary-test.html":
+                self.send_error(404)
+                return
             self.send_response(200)
             self.send_header("Content-Type", "text/html")
             self.end_headers()
@@ -266,6 +271,11 @@ def test_canary_detection_covers_json_text_and_embedded_values(payload):
             self.wfile.write(body.encode())
 
         def do_POST(self):
+            # A concurrently installed extension may still call its ordinary API.
+            # Reject that traffic without reading or retaining its payload.
+            if self.path != "/mock/lumora/collect.html":
+                self.send_error(404)
+                return
             sent.append(
                 self.rfile.read(int(self.headers.get("Content-Length", 0))).decode()
             )
@@ -279,6 +289,12 @@ def test_canary_detection_covers_json_text_and_embedded_values(payload):
     thread = Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
+        unrelated = httpx.post(
+            "http://127.0.0.1:8000/api/page/assess",
+            trust_env=False,
+        )
+        assert unrelated.status_code == 404
+        assert sent == []
         result = investigator.investigate(
             "http://localhost:8000/mock/lumora/canary-test.html"
         )

@@ -10,8 +10,8 @@ function withTab(id,operation){
 }
 chrome.storage.session.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'}).catch(()=>{});
 async function requestBackend(path,body,key,reputation=false) {
-  const response=await fetch(BACKEND+path,{method:'POST',headers:{'Content-Type':'application/json','X-TDefense-Key':key,'X-TDefense-Client':chrome.runtime.id,...(reputation?{'X-TDefense-Reputation':'enabled'}:{})},body:JSON.stringify(body),signal:AbortSignal.timeout(6000),cache:'no-store',credentials:'omit',redirect:'error'});
-  if (!response.ok) throw new Error(response.status===403?'Pair again with the current backend session.':'The local backend could not complete this check.');
+  let response;try{response=await fetch(BACKEND+path,{method:'POST',headers:{'Content-Type':'application/json','X-TDefense-Key':key,'X-TDefense-Client':chrome.runtime.id,...(reputation?{'X-TDefense-Reputation':'enabled'}:{})},body:JSON.stringify(body),signal:AbortSignal.timeout(6000),cache:'no-store',credentials:'omit',redirect:'error'});}catch(error){error.retryable=true;throw error;}
+  if (!response.ok) {const error=new Error(response.status===403?'Pair again with the current backend session.':'The local backend could not complete this check.');error.retryable=response.status===408 || response.status===429 || response.status>=500;throw error;}
   return response.json();
 }
 async function tabState(id) {return (await chrome.storage.session.get(stateKey(id)))[stateKey(id)] || {active:false,scanCount:0};}
@@ -112,7 +112,7 @@ async function stopEverywhere(){
   await withTab('global',async()=>{await chrome.storage.local.set({monitoring:{enabled:false,generation:crypto.randomUUID()}});await chrome.scripting.unregisterContentScripts({ids:['t-defense-always']}).catch(()=>{});const tabs=await chrome.tabs.query({});await Promise.allSettled(tabs.map(tab=>stopMonitoring(tab.id)));});return {ok:true};
 }
 async function restoreGlobal(){let enabled=false;await withTab('global',async()=>{const settings=await globalSettings();if(settings.enabled && await chrome.permissions.contains({origins:WEB_ORIGINS})){await registerPersistent();enabled=true;}});if(enabled)await armAll();}
-async function broadcast(type){const tabs=await chrome.tabs.query({});await Promise.allSettled(tabs.map(tab=>chrome.tabs.sendMessage(tab.id,{type})));}
+async function broadcast(type,payload={},exceptTab=null){const tabs=await chrome.tabs.query({});await Promise.allSettled(tabs.filter(tab=>tab.id!==exceptTab).map(tab=>chrome.tabs.sendMessage(tab.id,{...payload,type})));}
 async function selection(id){const state=await tabState(id);if(!state.active || !state.documentId)throw new Error('Select a current finding on a monitored page first.');
   const candidate=await chrome.tabs.sendMessage(id,{type:'TDEFENSE_SELECTION'},{documentId:state.documentId});
   if(!candidate?.fingerprint || candidate.origin!==state.origin || !/^[0-9a-f]{64}$/.test(candidate.fingerprint))throw new Error('Choose a smaller current message, link or form. Whole-page findings cannot be permanently trusted.');
@@ -123,7 +123,7 @@ async function handle(message,sender) {
     if(sender.frameId!==0 || !sender.tab || !/^https?:/.test(sender.url || ''))throw new Error('Unsupported page.');
     if((await globalSettings()).enabled)await armGlobal(sender.tab.id,new URL(sender.url).origin,sender.documentId);return {ok:true};}
   if(message.type==='TDEFENSE_TRUST_LIST' && sender.tab){if(sender.frameId!==0)throw new Error('Unsupported frame.');return {ok:true,entries:(await TrustStore.read(new URL(sender.url).origin)).map(row=>row.fingerprint)};}
-  if(message.type==='TDEFENSE_POSITION' && sender.tab){const pos=message.position;if(!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y) || pos.x<0 || pos.x>1 || pos.y<0 || pos.y>1)throw new Error('Invalid position.');await chrome.storage.local.set({panelPosition:pos});return {ok:true};}
+  if(message.type==='TDEFENSE_POSITION' && sender.tab){const pos=message.position;if(!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y) || pos.x<0 || pos.x>1 || pos.y<0 || pos.y>1)throw new Error('Invalid position.');await withTab('panel-position',async()=>{const position={x:pos.x,y:pos.y};await chrome.storage.local.set({panelPosition:position});await broadcast('TDEFENSE_POSITION_CHANGED',{position},sender.tab.id);});return {ok:true};}
   if(message.type==='TDEFENSE_GET_POSITION' && sender.tab)return {ok:true,position:(await chrome.storage.local.get('panelPosition')).panelPosition || null};
   if(message.type==='TDEFENSE_SNAPSHOT')return assess(message.snapshot,sender);
   if(message.type==='TDEFENSE_PAUSE' && sender.tab){const state=await tabState(sender.tab.id);if(state.origin!==new URL(sender.url).origin)throw new Error('Wrong page session.');return (await globalSettings()).enabled?stopEverywhere():stopMonitoring(sender.tab.id);}
@@ -135,7 +135,7 @@ async function handle(message,sender) {
   if(message.type==='TRUST_ENTRIES')return {ok:true,entries:await TrustStore.read()};
   if(message.type==='TRUST_DELETE'){await TrustStore.remove(message.fingerprint);await broadcast('TDEFENSE_TRUST_CHANGED');return {ok:true};}
   if(message.type==='TRUST_CLEAR'){await TrustStore.clear();await broadcast('TDEFENSE_TRUST_CHANGED');return {ok:true};}
-  if(message.type==='RESET_POSITION'){await chrome.storage.local.remove('panelPosition');await broadcast('TDEFENSE_RESET_POSITION');return {ok:true};}
+  if(message.type==='RESET_POSITION'){await withTab('panel-position',async()=>{await chrome.storage.local.remove('panelPosition');await broadcast('TDEFENSE_RESET_POSITION');});return {ok:true};}
   if(message.type==='START')return enableEverywhere();
   if(message.type==='STOP'){await stopEverywhere();return stopMonitoring(message.tabId);}
   if(message.type==='SCAN'){await chrome.tabs.sendMessage(message.tabId,{type:'TDEFENSE_SCAN'});return {ok:true};}
@@ -144,7 +144,7 @@ async function handle(message,sender) {
 }
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{
   if(!message || typeof message.type!=='string')return false;
-  handle(message,sender).then(reply).catch(error=>reply({ok:false,error:error.message || 'Page checks unavailable.',code:/Monitoring (?:is not active|was stopped)/.test(error.message)?'PAUSED':/Check settings changed/.test(error.message)?'RETRY':'CHECK_FAILED'}));
+  handle(message,sender).then(reply).catch(error=>reply({ok:false,error:error.message || 'Page checks unavailable.',code:/Monitoring (?:is not active|was stopped)/.test(error.message)?'PAUSED':/Check settings changed/.test(error.message)?'RETRY':error.retryable?'TRANSIENT':'CHECK_FAILED'}));
   return true;
 });
 chrome.tabs.onRemoved.addListener(id=>{withTab(id,()=>chrome.storage.session.remove(stateKey(id))).catch(()=>{});});

@@ -21,7 +21,7 @@
   function header(){
     const connected=[...findings.values()].filter(entry=>entry.node?.isConnected).length;
     host.setAttribute('data-finding-count',String(findings.size));host.setAttribute('data-marked-count',String(connected));
-    const headline=manualRequested?"I'm running checks for you periodically":connected?connected+' page element'+(connected===1?'':'s')+' need a second look':findings.size?findings.size+' previous finding'+(findings.size===1?'':'s')+' to review':host.getAttribute('data-status')==='unavailable'?'Checks unavailable — use caution':"I'm running checks for you periodically";
+    const headline=manualRequested && host.getAttribute('data-status')!=='unavailable'?"I'm running checks for you periodically":connected?connected+' page element'+(connected===1?'':'s')+' need a second look':findings.size?findings.size+' previous finding'+(findings.size===1?'':'s')+' to review':host.getAttribute('data-status')==='unavailable'?'Checks unavailable — use caution':"I'm running checks for you periodically";
     if(get('count').textContent!==headline)get('count').textContent=headline;
     get('risk-indicator').hidden=!findings.size;get('risk-indicator').classList.toggle('attention',unread && !!findings.size);
     get('risk-indicator').setAttribute('aria-label',findings.size+' possible risks or previous findings. Open T-Defense to review all.');
@@ -108,7 +108,7 @@
     get('continue').disabled=false;reputation(result);renderList();renderDetails();header();details();queueHighlights();
   }
   function pending(){
-    host.setAttribute('data-status','pending');host.removeAttribute('data-scan-id');
+    if(host.getAttribute('data-status')!=='unavailable')host.setAttribute('data-status','pending');host.removeAttribute('data-scan-id');
     pruneCurrent();
     if(guarded)get('continue').disabled=true;renderList();renderDetails();header();queueHighlights();
   }
@@ -127,13 +127,14 @@
     inFlight=true;const generation=manualGeneration;const requestScope=scopeUrl;const requestTrust=trustGeneration;
     try{
       const collected=await globalThis.TDefenseSnapshot.filterTrusted(globalThis.TDefenseSnapshot.collect(reason,previewNode?.isConnected?previewNode:null),trusted);if(!active)return;if(requestTrust!==trustGeneration){enqueue('manual');return;}trustedTargets=collected.trustedTargets || new Map();
-      const response=await chrome.runtime.sendMessage({type:'TDEFENSE_SNAPSHOT',snapshot:collected.snapshot});if(!active)return;
+      let response=await chrome.runtime.sendMessage({type:'TDEFENSE_SNAPSHOT',snapshot:collected.snapshot});if(!active)return;
+      if(response?.code==='TRANSIENT'){await new Promise(resolve=>setTimeout(resolve,600));if(!active)return;if(requestTrust!==trustGeneration || requestScope!==location.href || generation!==manualGeneration){enqueue('mutation');return;}response=await chrome.runtime.sendMessage({type:'TDEFENSE_SNAPSHOT',snapshot:collected.snapshot});if(!active)return;}
       if(!response?.ok){if(response?.code==='PAUSED'){stop();return;}if(response?.code==='RETRY'){pending();enqueue('manual',reset || manualRequested);return;}throw new Error(response?.error || 'Local page checks are unavailable.');}
       const current=await globalThis.TDefenseSnapshot.filterTrusted(globalThis.TDefenseSnapshot.collect(reason,previewNode?.isConnected?previewNode:null),trusted);
       if(requestTrust!==trustGeneration || requestScope!==scopeUrl || generation!==manualGeneration || JSON.stringify(current.snapshot)!==JSON.stringify(collected.snapshot)){pending();enqueue('mutation',reset || manualRequested);return;}
       const focused=collected.snapshot.elements.find(row=>collected.nodes.get(row.element_id)===previewNode);previewDomain=focused?.target_origin?new URL(focused.target_origin).hostname:null;
       render(response.result,collected,reset);
-    }catch(error){if(active)unavailable(error.message || 'Local page checks are unavailable.');}
+    }catch(error){if(active){if(requestScope!==location.href || generation!==manualGeneration || requestTrust!==trustGeneration){routeScope();enqueue('mutation');}else unavailable(error.message || 'Local page checks are unavailable.');}}
     finally{inFlight=false;if(active && queued){const again=queued;queued=null;setTimeout(()=>scan(again.reason,again.reset),250);}}
   }
   function schedule(reason){clearTimeout(timer);timer=setTimeout(()=>scan(reason),800);}
@@ -173,14 +174,15 @@
   function routeScope(){if(scopeUrl!==location.href){scopeUrl=location.href;manualGeneration++;findings.clear();rows.forEach(row=>row.remove());rows.clear();nodes.clear();previewNode=null;selected=null;guarded=null;latest=null;renderList();renderDetails();header();queueHighlights();return true;}return false;}
   async function refreshTrust(){const generation=++trustGeneration;trusted=new Set();trustedTargets.clear();const result=await chrome.runtime.sendMessage({type:'TDEFENSE_TRUST_LIST'});if(!result?.ok)throw new Error('Local trust settings could not be read. Elements will be checked.');if(generation===trustGeneration)trusted=new Set(result.entries);}
   function isLocallyTrusted(element){const target=globalThis.TDefenseSnapshot.reviewTarget(element);const expected=trustedTargets.get(target);return !!expected && globalThis.TDefenseSnapshot.identitySource(target)?.source===expected;}
+  let positionGeneration=0;
   const hostStyle=(name,value)=>host.style.setProperty(name,value,'important');
   function movePanel(left,top){hostStyle('left',left+'px');hostStyle('top',top+'px');hostStyle('right','auto');hostStyle('bottom','auto');clampPanel();}
   function clampPanel(){if(host.style.top && host.style.top!=='auto'){const bounds=shell.getBoundingClientRect();hostStyle('left',Math.max(8,Math.min(parseFloat(host.style.left)||16,innerWidth-bounds.width-8))+'px');hostStyle('top',Math.max(8,Math.min(parseFloat(host.style.top)||16,innerHeight-bounds.height-8))+'px');}}
   function place(position){if(position)movePanel(position.x*innerWidth,position.y*innerHeight);else{hostStyle('left','auto');hostStyle('top','auto');hostStyle('right','16px');hostStyle('bottom','16px');}}
-  async function savePosition(){const rect=shell.getBoundingClientRect();await chrome.runtime.sendMessage({type:'TDEFENSE_POSITION',position:{x:Math.max(0,Math.min(1,rect.left/innerWidth)),y:Math.max(0,Math.min(1,rect.top/innerHeight))}});}
+  async function savePosition(){positionGeneration++;const rect=shell.getBoundingClientRect();await chrome.runtime.sendMessage({type:'TDEFENSE_POSITION',position:{x:Math.max(0,Math.min(1,rect.left/innerWidth)),y:Math.max(0,Math.min(1,rect.top/innerHeight))}});}
   const routeEvent=()=>{if(routeScope()){pending();schedule('visible');}};
   window.addEventListener('hashchange',routeEvent);window.addEventListener('popstate',routeEvent);
-  get('move').onpointerdown=event=>{if(!event.isTrusted)return;const rect=shell.getBoundingClientRect();drag={x:event.clientX,y:event.clientY,left:rect.left,top:rect.top};get('move').setPointerCapture(event.pointerId);event.preventDefault();};
+  get('move').onpointerdown=event=>{if(!event.isTrusted)return;positionGeneration++;const rect=shell.getBoundingClientRect();drag={x:event.clientX,y:event.clientY,left:rect.left,top:rect.top};get('move').setPointerCapture(event.pointerId);event.preventDefault();};
   get('move').onpointermove=event=>{if(!drag)return;movePanel(drag.left+event.clientX-drag.x,drag.top+event.clientY-drag.y);};
   get('move').onpointerup=()=>{if(drag){drag=null;savePosition().catch(()=>{});}};
   get('move').onkeydown=event=>{const delta={ArrowLeft:[-20,0],ArrowRight:[20,0],ArrowUp:[0,-20],ArrowDown:[0,20]}[event.key];if(!delta)return;event.preventDefault();const rect=shell.getBoundingClientRect();movePanel(rect.left+delta[0],rect.top+delta[1]);savePosition().catch(()=>{});};
@@ -196,6 +198,6 @@
   get('scan').onclick=()=>scan('manual',true);
   get('pause').onclick=()=>chrome.runtime.sendMessage({type:'TDEFENSE_PAUSE'}).catch(()=>stop());
   get('continue').onclick=()=>{const action=guarded;if(!action || !action.element.isConnected){guarded=null;renderDetails();return;}if(action.signature!==actionSignature(action.element,action.submitter)){action.signature=actionSignature(action.element,action.submitter);pending();scan('interaction');return;}guarded=null;bypass.set(action.element,action.signature);try{if(action.kind==='link')action.element.click();else action.element.requestSubmit(action.submitter?.isConnected?action.submitter:undefined);}finally{bypass.delete(action.element);renderDetails();}};
-  function messageHandler(message,sender,reply){if(sender.id!==chrome.runtime.id)return false;if(message.type==='TDEFENSE_SELECTION'){const entry=findings.get(selected);globalThis.TDefenseSnapshot.identity(entry?.node).then(value=>reply(value?{fingerprint:value.fingerprint,origin:value.origin,kind:value.kind,preview:value.preview}:null));return true;}if(message.type==='TDEFENSE_TRUST_CHANGED'){refreshTrust().then(()=>scan('manual')).catch(error=>{unavailable(error.message);scan('manual');});reply({ok:true});return false;}if(message.type==='TDEFENSE_RESET_POSITION'){place(null);reply({ok:true});return false;}if(message.type==='TDEFENSE_DOCUMENT_CURRENT'){reply({active});return false;}if(message.type==='TDEFENSE_STOP'){stop();reply({ok:true});}else if(message.type==='TDEFENSE_RESTART_CHECK'){pending();scan('manual');reply({ok:true});}else if(message.type==='TDEFENSE_SCAN'){scan('manual',true);reply({ok:true});}return false;}
-  details();chrome.runtime.onMessage.addListener(messageHandler);globalThis.TDefenseGuard={scan,stop};chrome.runtime.sendMessage({type:'TDEFENSE_GET_POSITION'}).then(result=>{if(active)place(result.position);}).catch(()=>{});refreshTrust().catch(()=>{}).then(()=>{if(active)scan('initial');});
+  function messageHandler(message,sender,reply){if(sender.id!==chrome.runtime.id)return false;if(message.type==='TDEFENSE_SELECTION'){const entry=findings.get(selected);globalThis.TDefenseSnapshot.identity(entry?.node).then(value=>reply(value?{fingerprint:value.fingerprint,origin:value.origin,kind:value.kind,preview:value.preview}:null));return true;}if(message.type==='TDEFENSE_TRUST_CHANGED'){refreshTrust().then(()=>scan('manual')).catch(error=>{unavailable(error.message);scan('manual');});reply({ok:true});return false;}if(message.type==='TDEFENSE_POSITION_CHANGED'){positionGeneration++;place(message.position);reply({ok:true});return false;}if(message.type==='TDEFENSE_RESET_POSITION'){positionGeneration++;place(null);reply({ok:true});return false;}if(message.type==='TDEFENSE_DOCUMENT_CURRENT'){reply({active});return false;}if(message.type==='TDEFENSE_STOP'){stop();reply({ok:true});}else if(message.type==='TDEFENSE_RESTART_CHECK'){pending();scan('manual');reply({ok:true});}else if(message.type==='TDEFENSE_SCAN'){scan('manual',true);reply({ok:true});}return false;}
+  details();chrome.runtime.onMessage.addListener(messageHandler);globalThis.TDefenseGuard={scan,stop};const initialPositionGeneration=positionGeneration;chrome.runtime.sendMessage({type:'TDEFENSE_GET_POSITION'}).then(result=>{if(active && positionGeneration===initialPositionGeneration)place(result.position);}).catch(()=>{});refreshTrust().catch(()=>{}).then(()=>{if(active)scan('initial');});
 })();

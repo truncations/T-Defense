@@ -205,3 +205,10 @@ Extension protocol adds gated TDEFENSE_HELLO/bootstrap registration for continuo
 FilterTrusted excludes exact locally trusted scope/descendants, adjusts elements_scanned and trusted_skipped, preserves coverage truncation. SHA256 source includes site origin, complete bounded local visible text and effective link/form/input metadata, associated external controls and labels; values never enter identity. Oversized/unsupported secure-crypto identities cannot be trusted. Source strings remain local to content script; only fingerprints/ephemeral preview cross browser messaging, never backend. Generation checks protect revocation, navigation and settings from stale async responses.
 
 UI is current-scope: closed/hidden/removed nodes prune immediately; valid negative covered evidence resolves automatically. Unchanged row, fact, marker and headline nodes remain stable. Footer status is constant during ordinary checks, diagnostic scan IDs remain under disclosure. Default bottom-right compact dock supports pointer/keyboard relocation saved as bounded ratios. Centered SVG risk icon opens findings. No safe certification or complete frame/file/media/JS analysis added.
+
+
+## Shared panel position v0.4.1
+
+TDEFENSE_POSITION validates bounded viewport ratios, serializes local preference updates/reset, and broadcasts TDEFENSE_POSITION_CHANGED {position:{x,y}} to other open tabs. New documents read the same global panelPosition preference. Content generation guards prevent a delayed initial read overriding a newer move/broadcast. Each viewport clamps locally; no page data, backend requests or conversation analysis is added.
+
+Worker errors optionally use code TRANSIENT for network/timeout/HTTP408/429/5xx failures. Content retries the same bounded snapshot once after600ms, subject to active/scope/trust/manual-generation checks. Authentication/validation failures do not use TRANSIENT. Confirmed unavailable status survives pending/manual retries until validated success; stale failed requests cannot overwrite new scope state.
