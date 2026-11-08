@@ -1,0 +1,235 @@
+{
+  "/mock/lumora/verify.html": {
+    "mode": "replay",
+    "status": "done",
+    "start_url": "http://localhost:8000/mock/lumora/verify.html",
+    "final_url": "http://127.0.0.1:8000/mock/lumora/collect.html",
+    "redirect_chain": [
+      "http://localhost:8000/mock/lumora/verify.html",
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "cross_origin_final": true,
+    "fields_requested": [
+      "name",
+      "password",
+      "card_number",
+      "expiry",
+      "cvv",
+      "one_time_code"
+    ],
+    "canaries_sent_to": [
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "canaries_cross_origin": true,
+    "urgency_phrases": [
+      "suspended",
+      "today",
+      "minutes"
+    ],
+    "download_attempted": false,
+    "ai_directed_text": false,
+    "duration_ms": 4167,
+    "error": null,
+    "simulated": false,
+    "recorded": true,
+    "form_targets": [
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "blocked_requests": 0,
+    "uninspected_content": false
+  },
+  "/mock/lumora/reward.html": {
+    "mode": "replay",
+    "status": "done",
+    "start_url": "http://localhost:8000/mock/lumora/reward.html",
+    "final_url": "http://127.0.0.1:8000/mock/lumora/collect.html",
+    "redirect_chain": [
+      "http://localhost:8000/mock/lumora/reward.html",
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "cross_origin_final": true,
+    "fields_requested": [
+      "gift_card",
+      "pin"
+    ],
+    "canaries_sent_to": [
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "canaries_cross_origin": true,
+    "urgency_phrases": [
+      "only 3 rewards left"
+    ],
+    "download_attempted": false,
+    "ai_directed_text": false,
+    "duration_ms": 2976,
+    "error": null,
+    "simulated": false,
+    "recorded": true,
+    "form_targets": [
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "blocked_requests": 0,
+    "uninspected_content": false
+  },
+  "/mock/lumora/bill.html": {
+    "mode": "replay",
+    "status": "done",
+    "start_url": "http://localhost:8000/mock/lumora/bill.html",
+    "final_url": "http://localhost:8000/mock/lumora/bill.html",
+    "redirect_chain": [
+      "http://localhost:8000/mock/lumora/bill.html"
+    ],
+    "cross_origin_final": false,
+    "fields_requested": [],
+    "canaries_sent_to": [],
+    "canaries_cross_origin": false,
+    "urgency_phrases": [],
+    "download_attempted": false,
+    "ai_directed_text": false,
+    "duration_ms": 3210,
+    "error": null,
+    "simulated": false,
+    "recorded": true,
+    "form_targets": [],
+    "blocked_requests": 0,
+    "uninspected_content": false
+  },
+  "/mock/lumora/track.html": {
+    "mode": "replay",
+    "status": "done",
+    "start_url": "http://localhost:8000/mock/lumora/track.html",
+    "final_url": "http://127.0.0.1:8000/mock/lumora/collect.html",
+    "redirect_chain": [
+      "http://localhost:8000/mock/lumora/track.html",
+      "http://127.0.0.1:8000/mock/lumora/fee.html",
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "cross_origin_final": true,
+    "fields_requested": [
+      "card_number"
+    ],
+    "canaries_sent_to": [
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "canaries_cross_origin": true,
+    "urgency_phrases": [],
+    "download_attempted": false,
+    "ai_directed_text": false,
+    "duration_ms": 3261,
+    "error": null,
+    "simulated": false,
+    "recorded": true,
+    "form_targets": [
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "blocked_requests": 0,
+    "uninspected_content": false
+  },
+  "/mock/lumora/help.html": {
+    "mode": "replay",
+    "status": "done",
+    "start_url": "http://localhost:8000/mock/lumora/help.html",
+    "final_url": "http://127.0.0.1:8000/mock/lumora/collect.html",
+    "redirect_chain": [
+      "http://localhost:8000/mock/lumora/help.html",
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "cross_origin_final": true,
+    "fields_requested": [
+      "ssn",
+      "date_of_birth"
+    ],
+    "canaries_sent_to": [
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "canaries_cross_origin": true,
+    "urgency_phrases": [],
+    "download_attempted": false,
+    "ai_directed_text": true,
+    "duration_ms": 3991,
+    "error": null,
+    "simulated": false,
+    "recorded": true,
+    "form_targets": [
+      "http://127.0.0.1:8000/mock/lumora/collect.html"
+    ],
+    "blocked_requests": 0,
+    "uninspected_content": false
+  },
+  "/mock/lumora/fee.html": {
+    "mode": "replay",
+    "status": "done",
+    "start_url": "http://localhost:8000/mock/lumora/fee.html",
+    "final_url": "http://localhost:8000/mock/lumora/collect.html",
+    "redirect_chain": [
+      "http://localhost:8000/mock/lumora/fee.html",
+      "http://localhost:8000/mock/lumora/collect.html"
+    ],
+    "cross_origin_final": false,
+    "fields_requested": [
+      "card_number"
+    ],
+    "canaries_sent_to": [
+      "http://localhost:8000/mock/lumora/collect.html"
+    ],
+    "canaries_cross_origin": false,
+    "urgency_phrases": [],
+    "download_attempted": false,
+    "ai_directed_text": false,
+    "duration_ms": 3809,
+    "error": null,
+    "simulated": false,
+    "recorded": true,
+    "form_targets": [
+      "http://localhost:8000/mock/lumora/collect.html"
+    ],
+    "blocked_requests": 0,
+    "uninspected_content": false
+  },
+  "/mock/lumora/attachment.html": {
+    "mode": "replay",
+    "status": "done",
+    "start_url": "http://localhost:8000/mock/lumora/attachment.html",
+    "final_url": "http://localhost:8000/mock/lumora/attachment.html",
+    "redirect_chain": [
+      "http://localhost:8000/mock/lumora/attachment.html"
+    ],
+    "cross_origin_final": false,
+    "fields_requested": [],
+    "canaries_sent_to": [],
+    "canaries_cross_origin": false,
+    "urgency_phrases": [],
+    "download_attempted": true,
+    "ai_directed_text": false,
+    "duration_ms": 2880,
+    "error": null,
+    "simulated": false,
+    "recorded": true,
+    "form_targets": [],
+    "blocked_requests": 0,
+    "uninspected_content": false
+  },
+  "/mock/lumora/slow.html": {
+    "mode": "replay",
+    "status": "failed",
+    "start_url": "http://localhost:8000/mock/lumora/slow.html",
+    "final_url": "http://localhost:8000/mock/lumora/slow.html",
+    "redirect_chain": [
+      "http://localhost:8000/mock/lumora/slow.html"
+    ],
+    "cross_origin_final": false,
+    "fields_requested": [],
+    "canaries_sent_to": [],
+    "canaries_cross_origin": false,
+    "urgency_phrases": [],
+    "download_attempted": false,
+    "ai_directed_text": false,
+    "duration_ms": 8036,
+    "error": "Investigation did not complete (TimeoutError).",
+    "simulated": false,
+    "recorded": true,
+    "form_targets": [],
+    "blocked_requests": 0,
+    "uninspected_content": false
+  }
+}

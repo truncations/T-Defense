@@ -1,0 +1,14 @@
+.venv/
+.playwright/
+.env
+.env.*
+!.env.example
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+work/
+
+# Generated demo media stays local; source publication excludes binary backups.
+demo_backup/*.png
+demo_backup/*.webm

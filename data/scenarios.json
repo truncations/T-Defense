@@ -1,0 +1,86 @@
+[
+  {
+    "message_id": "team-001",
+    "source": "placeholder",
+    "sender": "LumoraAlerts",
+    "text": "Lumora Wireless: your line will be suspended today. Verify now: http://localhost:8000/mock/lumora/verify.html",
+    "note": "Demo A \u00b7 account pressure"
+  },
+  {
+    "message_id": "team-002",
+    "source": "placeholder",
+    "sender": "LumoraOrders",
+    "text": "Your order shipped. Track your delivery: http://localhost:8000/mock/lumora/track.html",
+    "note": "Demo B \u00b7 a harmless-looking text"
+  },
+  {
+    "message_id": "team-003",
+    "source": "placeholder",
+    "sender": "LumoraBilling",
+    "text": "Your bill is ready. View the notice: http://localhost:8000/mock/lumora/bill.html",
+    "note": "Demo C \u00b7 a plain notice"
+  },
+  {
+    "message_id": "team-004",
+    "source": "placeholder",
+    "sender": "LumoraRewards",
+    "text": "Claim your reward with a gift card code: http://localhost:8000/mock/lumora/reward.html",
+    "note": "Reward simulation"
+  },
+  {
+    "message_id": "team-005",
+    "source": "placeholder",
+    "sender": "LumoraHelp",
+    "text": "Account security check. Please confirm: http://localhost:8000/mock/lumora/help.html",
+    "note": "Hidden instruction simulation"
+  },
+  {
+    "message_id": "team-006",
+    "source": "placeholder",
+    "sender": "LumoraDelivery",
+    "text": "A delivery fee is listed here: http://localhost:8000/mock/lumora/fee.html",
+    "note": "One concerning page signal"
+  },
+  {
+    "message_id": "team-007",
+    "source": "placeholder",
+    "sender": "DemoNotice",
+    "text": "Here is a link we cannot check: https://unavailable.example.test/notice",
+    "note": "Blocked external link"
+  },
+  {
+    "message_id": "team-008",
+    "source": "placeholder",
+    "sender": "DemoCalendar",
+    "text": "Reminder: your project practice starts at 4.",
+    "note": "Plain reminder"
+  },
+  {
+    "message_id": "team-009",
+    "source": "placeholder",
+    "sender": "DemoAccount",
+    "text": "Unusual activity. Please confirm your password: http://localhost:8000/mock/lumora/slow.html",
+    "note": "Timeout simulation"
+  },
+  {
+    "message_id": "team-010",
+    "source": "placeholder",
+    "sender": "DemoTeam",
+    "text": "The demo notes are ready for your review.",
+    "note": "Plain message"
+  },
+  {
+    "message_id": "team-011",
+    "source": "placeholder",
+    "sender": "DemoSecurity",
+    "text": "Final notice: verify your account immediately.",
+    "note": "Pressure without a link"
+  },
+  {
+    "message_id": "team-012",
+    "source": "placeholder",
+    "sender": "LumoraFiles",
+    "text": "Your invoice attachment is ready: http://localhost:8000/mock/lumora/attachment.html",
+    "note": "Harmless attachment download attempt; contents not scanned"
+  }
+]

@@ -1,0 +1,4 @@
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+[tool.ruff]
+exclude = ["teammate-build-kit", ".agents", "starter", "work", ".venv", ".playwright"]
