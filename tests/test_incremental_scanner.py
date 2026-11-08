@@ -84,6 +84,12 @@ def test_changed_nodes_are_coalesced_and_interactions_skip_background_backlog():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1280, "height": 1800})
+        page.route(
+            "http://localhost:8080/**",
+            lambda route: route.fulfill(
+                status=200, content_type="text/html", body="<html></html>"
+            ),
+        )
         page.goto("http://localhost:8080")
         page.set_content(
             '<html><body><a id="focus" href="/safe">Normal</a>'
@@ -120,6 +126,12 @@ def test_open_shadow_content_is_eventually_checked_across_batches():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(viewport={"width": 1280, "height": 1800})
+        page.route(
+            "http://localhost:8080/**",
+            lambda route: route.fulfill(
+                status=200, content_type="text/html", body="<html></html>"
+            ),
+        )
         page.goto("http://localhost:8080")
         page.set_content("<html><body><div id='root'></div></body></html>")
         page.evaluate(

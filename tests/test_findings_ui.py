@@ -63,9 +63,7 @@ def test_all_markers_list_navigation_stable_count_and_manual_refresh(server, tmp
             worker.evaluate("id=>startMonitoring(id)", tab)
             guard = page.locator("#tdefense-page-guard")
             expect(guard).to_have_attribute("data-warning-count", "14", timeout=12000)
-            expect(guard.locator("#count")).to_have_text(
-                "! 14"
-            )
+            expect(guard.locator("#count")).to_have_text("! 14")
             expect(guard.locator("#risk-indicator")).to_be_visible()
             expect(guard.locator("#risk-indicator")).to_have_class("risk attention")
             page.emulate_media(reduced_motion="reduce")
@@ -131,14 +129,14 @@ def test_all_markers_list_navigation_stable_count_and_manual_refresh(server, tmp
             for _ in range(3):
                 page.evaluate("document.body.append(document.createElement('aside'))")
                 page.wait_for_timeout(120)
-                expect(guard.locator("#count")).to_have_text(
-                    "! 14"
-                )
+                expect(guard.locator("#count")).to_have_text("! 14")
             page.wait_for_timeout(9000)
             assert page.evaluate("headlineChanges") == [], (
                 "Unchanged warning headline must not be rewritten by background checks"
             )
-            page.screenshot(path="/tmp/browser/social-all-findings.png", full_page=False)
+            page.screenshot(
+                path=str(tmp_path / "social-all-findings.png"), full_page=False
+            )
             page.set_viewport_size({"width": 390, "height": 844})
             panel = guard.bounding_box()
             assert panel["x"] >= 0 and panel["x"] + panel["width"] <= 391
@@ -147,7 +145,7 @@ def test_all_markers_list_navigation_stable_count_and_manual_refresh(server, tmp
                 <= 844 * 0.57 + 1
             )
             page.screenshot(
-                path="/tmp/browser/social-mobile-findings.png", full_page=False
+                path=str(tmp_path / "social-mobile-findings.png"), full_page=False
             )
             page.set_viewport_size({"width": 1400, "height": 1000})
             assert posted and all(
@@ -172,9 +170,7 @@ def test_all_markers_list_navigation_stable_count_and_manual_refresh(server, tmp
             guard.locator("#scan").click()
             expect(guard.locator(".finding-row")).to_have_count(0, timeout=12000)
             expect(guard.locator(".highlight")).to_have_count(0)
-            expect(guard.locator("#count")).to_have_text(
-                "! 0"
-            )
+            expect(guard.locator("#count")).to_have_text("! 0")
             expect(guard.locator("#count")).to_have_text("! 0")
             worker.evaluate("id=>stopMonitoring(id)", tab)
             expect(guard).to_have_count(0)

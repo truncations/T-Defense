@@ -68,7 +68,7 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
         )
         overlay.locator("#toggle").click()
         page.screenshot(
-            path="/tmp/browser/extension-message-overlay.png", full_page=False
+            path=str(tmp_path / "extension-message-overlay.png"), full_page=False
         )
         link = page.locator(".lab-message a").first
         link.click()
@@ -131,7 +131,9 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
             set(json.loads(body)) == {"page_origin", "reason", "elements", "coverage"}
             for body in posted
         )
-        page.screenshot(path="/tmp/browser/extension-form-overlay.png", full_page=False)
+        page.screenshot(
+            path=str(tmp_path / "extension-form-overlay.png"), full_page=False
+        )
         # Delay actual backend responses, then change DOM during the request.
         worker.evaluate("""() => {globalThis.originalRequest=requestBackend;
           requestBackend=async(path,...args)=>{const value=await originalRequest(path,...args);
@@ -158,14 +160,23 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
         assert new_state["warningCount"] == 0
         expect(overlay).to_have_attribute("data-warning-count", "0")
         worker.evaluate("() => {requestBackend=originalRequest;}")
+        # An approved installation repairs an invalid session key automatically.
+        previous_scan = overlay.get_attribute("data-scan-id")
         worker.evaluate(
             "async () => chrome.storage.session.set({backendKey:'invalid-but-long-enough-pairing-code'})"
         )
         worker.evaluate(
             "id => chrome.tabs.sendMessage(id,{type:'TDEFENSE_SCAN'})", tab_id
         )
-        expect(overlay).to_have_attribute("data-status", "unavailable", timeout=12000)
-        assert overlay.get_attribute("data-status") == "unavailable"
+        page.wait_for_function(
+            "old=>{const h=document.querySelector('#tdefense-page-guard');return h.dataset.status==='checked' && h.dataset.scanId && h.dataset.scanId!==old;}",
+            arg=previous_scan,
+            timeout=12000,
+        )
+        assert worker.evaluate(
+            """async()=>{for(let i=0;i<60;i++){const {backendKey}=await chrome.storage.session.get('backendKey');if(backendKey && backendKey!=='invalid-but-long-enough-pairing-code'){try{const result=await requestBackend('/api/extension/connect',{},backendKey);if(result.connected)return true;}catch{}}await new Promise(resolve=>setTimeout(resolve,200));}return false;}"""
+        )
+        expect(overlay).to_have_attribute("data-warning-count", "0")
         worker.evaluate("id => stopMonitoring(id)", tab_id)
         expect(overlay).to_have_count(0)
         assert (

@@ -48,16 +48,25 @@ def collect_link(collector, url, label=None):
         "https://paypal-login.example/",
     ],
 )
-def test_brand_lookalike_link_warns_without_pressure_or_address_mismatch(collector, url):
+def test_brand_lookalike_link_warns_without_pressure_or_address_mismatch(
+    collector, url
+):
     snapshot = collect_link(collector, url)
     result = assess_snapshot(Snapshot.model_validate(snapshot))
-    assert collector.evaluate("TDefenseSnapshot.brandLookalike", snapshot["elements"][0]["target_origin"]) is True
+    assert (
+        collector.evaluate(
+            "TDefenseSnapshot.brandLookalike", snapshot["elements"][0]["target_origin"]
+        )
+        is True
+    )
     assert result["verdict"] == "warning"
     assert any(
         row["severity"] == "medium" and "brand-lookalike-host" in row["rules"]
         for row in result["warnings"]
     )
-    assert all("misleading-link-address" not in row["rules"] for row in result["warnings"])
+    assert all(
+        "misleading-link-address" not in row["rules"] for row in result["warnings"]
+    )
     assert "/scam" not in str(snapshot)
 
 
@@ -77,14 +86,23 @@ def test_brand_lookalike_link_warns_without_pressure_or_address_mismatch(collect
         ("https://ordinary.ai/scam", None),
     ],
 )
-def test_benign_domains_listings_and_mentions_do_not_trigger_brand_rule(collector, url, label):
+def test_benign_domains_listings_and_mentions_do_not_trigger_brand_rule(
+    collector, url, label
+):
     snapshot = collect_link(collector, url, label)
-    assert collector.evaluate("TDefenseSnapshot.brandLookalike", snapshot["elements"][0]["target_origin"]) is False
+    assert (
+        collector.evaluate(
+            "TDefenseSnapshot.brandLookalike", snapshot["elements"][0]["target_origin"]
+        )
+        is False
+    )
     assert assess_snapshot(Snapshot.model_validate(snapshot))["warning_count"] == 0
 
 
 def test_recognized_paypal_domain_does_not_bypass_other_evidence(collector):
-    snapshot = collect_link(collector, "https://paypal.com/", "https://different.example/")
+    snapshot = collect_link(
+        collector, "https://paypal.com/", "https://different.example/"
+    )
     result = assess_snapshot(Snapshot.model_validate(snapshot))
     assert result["warning_count"] == 1
     assert result["warnings"][0]["rules"] == ["misleading-link-address"]
@@ -97,21 +115,36 @@ def test_native_extension_lists_and_guards_missed_link(server, tmp_path):
     key = httpx.get(server + "/api/extension/pairing").json()["pairing_code"]
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
-            str(tmp_path / "brand-profile"), channel="chromium", headless=True,
-            args=[f"--disable-extensions-except={ROOT / 'extension'}", f"--load-extension={ROOT / 'extension'}"],
+            str(tmp_path / "brand-profile"),
+            channel="chromium",
+            headless=True,
+            args=[
+                f"--disable-extensions-except={ROOT / 'extension'}",
+                f"--load-extension={ROOT / 'extension'}",
+            ],
             viewport={"width": 1280, "height": 1800},
         )
         try:
-            worker = context.service_workers[0] if context.service_workers else context.wait_for_event("serviceworker")
+            worker = (
+                context.service_workers[0]
+                if context.service_workers
+                else context.wait_for_event("serviceworker")
+            )
             worker.evaluate("key=>pair(key)", key)
             page = context.new_page()
             # Intercept all fixture/destination traffic. Never visit the reported site.
             page.route("https://www.paypal.ai/**", lambda route: route.abort())
-            page.route("**/brand-fixture", lambda route: route.fulfill(
-                content_type="text/html", body='<html><body><div id="message-content-fixture"><a id="example" href="https://www.paypal.ai/scam">https://www.paypal.ai/scam</a></div></body></html>'
-            ))
+            page.route(
+                "**/brand-fixture",
+                lambda route: route.fulfill(
+                    content_type="text/html",
+                    body='<html><body><div id="message-content-fixture"><a id="example" href="https://www.paypal.ai/scam">https://www.paypal.ai/scam</a></div></body></html>',
+                ),
+            )
             page.goto(server + "/brand-fixture")
-            tab = worker.evaluate("async()=> (await chrome.tabs.query({})).find(tab=>tab.url?.includes('/brand-fixture')).id")
+            tab = worker.evaluate(
+                "async()=> (await chrome.tabs.query({})).find(tab=>tab.url?.includes('/brand-fixture')).id"
+            )
             worker.evaluate("id=>startMonitoring(id)", tab)
             guard = page.locator("#tdefense-page-guard")
             expect(guard).to_have_attribute("data-warning-count", "1", timeout=12000)
@@ -121,8 +154,7 @@ def test_native_extension_lists_and_guards_missed_link(server, tmp_path):
             expect(guard.locator("#guard-note")).to_be_visible()
             expect(guard.locator(".finding-row")).to_have_count(1)
             assert page.url == server + "/brand-fixture"
-            Path("/tmp/browser").mkdir(exist_ok=True)
-            page.screenshot(path="/tmp/browser/brand-link-warning.png")
+            page.screenshot(path=str(tmp_path / "brand-link-warning.png"))
             worker.evaluate("id=>stopMonitoring(id)", tab)
             expect(guard).to_have_count(0)
         finally:

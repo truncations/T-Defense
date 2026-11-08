@@ -73,5 +73,5 @@ def test_findings_list_only_initiates_genuine_popup_confirmation(server, tmp_pat
         )
         expect(ui).to_have_attribute("data-warning-count", "0", timeout=12000)
         assert len(worker.evaluate("()=>TrustStore.read()")) == 1
-        page.screenshot(path="/tmp/browser/t-defense/trust-confirmed.png")
+        page.screenshot(path=str(tmp_path / "t-defense/trust-confirmed.png"))
         context.close()

@@ -314,11 +314,18 @@ def test_backend_restart_rotates_approved_installation_session(isolated_pairing)
     )
 
 
-def test_revocation_during_assessment_rejects_delayed_result(isolated_pairing, monkeypatch):
+def test_revocation_during_assessment_rejects_delayed_result(
+    isolated_pairing, monkeypatch
+):
     client_id = "b" * 32
     page_guard.APPROVAL_FILE.write_text('["' + client_id + '"]')
-    headers = {"X-TDefense-Client": client_id, "Origin": "chrome-extension://" + client_id}
-    key = CLIENT.post("/api/extension/auto-pair", headers=headers).json()["pairing_code"]
+    headers = {
+        "X-TDefense-Client": client_id,
+        "Origin": "chrome-extension://" + client_id,
+    }
+    key = CLIENT.post("/api/extension/auto-pair", headers=headers).json()[
+        "pairing_code"
+    ]
 
     async def revoke_while_pending(snapshot, result, enabled):
         with page_guard.LOCK:

@@ -67,10 +67,10 @@ def test_existing_pairing_and_old_monitor_replacement(server, tmp_path):
             ui.locator(".finding-row").first.click()
             ui.locator(".actions .finding-trust").click()
             assert worker.evaluate("()=>TrustStore.read()") == []
-            page.screenshot(path="/tmp/browser/updated-risk-drawer.png")
+            page.screenshot(path=str(tmp_path / "updated-risk-drawer.png"))
             ui.locator("#close").click()
             expect(ui.locator("#body")).to_be_hidden()
             page.wait_for_timeout(300)
-            page.screenshot(path="/tmp/browser/updated-risk-tab.png")
+            page.screenshot(path=str(tmp_path / "updated-risk-tab.png"))
         finally:
             context.close()
