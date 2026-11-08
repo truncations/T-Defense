@@ -99,3 +99,11 @@
 - Final recording saved and inspected:89.88seconds (approximately90s),1280x1000VP9; extracted15s frame confirms current T-Defense branding, prominent action warning and recorded-replay disclosure. Includes attachment scenario and recovery.
 - Final safety/demo reviewers cleared source/docs/reset and publication preparation; recording verification condition is now satisfied.
 - Local milestone tagged demo-local-ready. Actual sponsor evaluation is not complete and demo-final is deliberately not claimed.
+
+## GitHub source publication — VERIFIED (2026-11-07)
+- Published reviewed source checkpoint0e7bd1178fe75ea298b921f9cabdec8667ef3347 on truncations/T-Defense main using the authenticated GitHub connection. Existing remote commits and MIT license retained; nonforce update used the verified prior head as a lease.
+- GitHub tree fb336100674f1d434a16918c3fcd8de4a7d89bd4 exactly matched the temporary-index source tree exported from reviewed local milestone5e862ef9401ca10a85324df58006b8d22d13b8be. Anonymous fetch independently confirmed the published commit and tree.
+- Published85UTF8source/config/docs/test files. Excluded14generatedPNG/WebM media files from public source; they remain local and in original local stage history. starter/ remains empty. Only .env.example is tracked; secret-pattern and environment exclusions checked.
+- Original local stage history is preserved on local/stage-history-2026-11-07 (including all passing stage commits and binary demo backups). Public GitHub uses reviewed source checkpoint commits because the native Windows Git credential helper is unavailable.
+- This publication record will be published as a documentation-only follow-up; local main will then align to the verified public source tree without deleting working files. The archive branch will retain the publication-log commit too.
+- Current result: local demo ready,89tests pass,3freshreplayrehearsals pass, live investigations/recovery/warnings implemented. Sponsor integration and actual sponsor-data metrics remain pending; no placeholder accuracy claims.

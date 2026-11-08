@@ -24,4 +24,4 @@ The provided classifier, message set and taxonomy are not present. Text scores r
 
 Only local demo URLs are investigated. Other hosts, ports and API paths are blocked. WebSockets and service workers are blocked; extra popup/frame content fails closed. A short fixed script cannot establish that a real site is trustworthy or detect every delayed behavior. Confidence wording reflects rules and observed evidence, not calibrated model certainty.
 
-The user approved the replay GATE and continued building. The connected GitHub account can publish reviewed source snapshots; native terminal Git credentials remain unavailable in this session. Original local stage commits and generated media will be preserved on an archive branch when synchronizing publication.
+The user approved the replay GATE and continued building. The reviewed source is published at https://github.com/truncations/T-Defense. Native terminal Git credentials remain unavailable in this session; publication used the authenticated GitHub connection. Original local stage commits and generated media are preserved on local/stage-history-2026-11-07.
