@@ -1,5 +1,11 @@
 # T-Defense progress
 
+## Lovable review milestone — November 8, 2026
+- Preserved public checkpoint d8fb7e9 and local MV3/Python architecture; implemented bounded incremental collection, filename/price evidence fixes, and findings-list trust initiation.
+- 53 targeted behavioral regressions passed; full suite had 163 passed and three unchanged legacy investigator teardown errors, reproduced independently.
+- Synthetic per-batch performance improved; ten-hour YouTube playback and local Windows installation remain unverified. See UPDATE_NOTES.md for measurements and limitations.
+- Progress-display redesign, automatic pairing, conversation analysis, and cloud processing remain deferred.
+
 - Current primary milestone: Page Guard v0.3 social indicators + all findings VERIFIED AND PUBLISHED;153tests pass, reviewed.
 - Setup: DONE
 - Stage 0: DEFERRED — starter files pending; user authorized placeholder adapter.

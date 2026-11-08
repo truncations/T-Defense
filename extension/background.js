@@ -125,6 +125,15 @@ async function handle(message,sender) {
   if(message.type==='TDEFENSE_TRUST_LIST' && sender.tab){if(sender.frameId!==0)throw new Error('Unsupported frame.');return {ok:true,entries:(await TrustStore.read(new URL(sender.url).origin)).map(row=>row.fingerprint)};}
   if(message.type==='TDEFENSE_POSITION' && sender.tab){const pos=message.position;if(!pos || !Number.isFinite(pos.x) || !Number.isFinite(pos.y) || pos.x<0 || pos.x>1 || pos.y<0 || pos.y>1)throw new Error('Invalid position.');await withTab('panel-position',async()=>{const position={x:pos.x,y:pos.y};await chrome.storage.local.set({panelPosition:position});await broadcast('TDEFENSE_POSITION_CHANGED',{position},sender.tab.id);});return {ok:true};}
   if(message.type==='TDEFENSE_GET_POSITION' && sender.tab)return {ok:true,position:(await chrome.storage.local.get('panelPosition')).panelPosition || null};
+  if(message.type==='TDEFENSE_OPEN_TRUST' && sender.tab){
+    if(sender.frameId!==0)throw new Error('Unsupported frame.');
+    const state=await tabState(sender.tab.id);
+    if(!state.active || state.documentId!==sender.documentId || state.origin!==new URL(sender.url).origin)throw new Error('Select a current monitored finding.');
+    // Opening the genuine toolbar never grants trust or creates a confirmation token.
+    await chrome.storage.session.set({['trustRequested:'+sender.tab.id]:true});
+    try{await chrome.action.openPopup();}catch{throw new Error('Open the genuine extension toolbar to confirm.');}
+    return {ok:true};
+  }
   if(message.type==='TDEFENSE_SNAPSHOT')return assess(message.snapshot,sender);
   if(message.type==='TDEFENSE_PAUSE' && sender.tab){const state=await tabState(sender.tab.id);if(state.origin!==new URL(sender.url).origin)throw new Error('Wrong page session.');return (await globalSettings()).enabled?stopEverywhere():stopMonitoring(sender.tab.id);}
   if(sender.tab || sender.url!==chrome.runtime.getURL('popup.html'))throw new Error('Use the extension popup controls.');

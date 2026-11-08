@@ -101,29 +101,70 @@
       if(!value)break;const next=new URL(value);if(!['http:','https:'].includes(next.protocol))break;url=next;wrapped=true;
     }return {url,wrapped};
   }
-  function collect(reason = 'manual', focusNode=null) {
-    const roots = [document]; let domTruncated = false;
-    // Inspect open component trees within a bounded discovery budget.
-    for (let i=0;i<roots.length && i<12;i++) {
-      const elements=roots[i].querySelectorAll('*');
-      if (elements.length>3500) domTruncated=true;
-      for (const element of Array.from(elements).slice(0,3500)) {
-        if (element.id==='tdefense-page-guard') continue;
-        if (element.shadowRoot) {if(roots.length<12)roots.push(element.shadowRoot);else domTruncated=true;}
-      }
+  const selector='a[href],form,article,p,[data-list-item-id^="chat-messages"],[id^="message-content-"],[class*="messageContent"],[data-tdefense-message],[role="article"],[role="listitem"],[class*="message"],[class*="chat-bubble"],.a3s,[data-message-id],[data-legacy-message-id],[data-tdefense-email]';
+  const emailSelector='.a3s,[data-message-id],[data-legacy-message-id],[data-tdefense-email]';
+  const visible=node=>node.isConnected && !!node.getClientRects().length && getComputedStyle(node).visibility!=='hidden';
+  const eligible=node=>node.matches(selector) && !node.closest(excluded) && visible(node) && !(node.tagName==='P' && node.parentElement?.closest(messageSelector));
+  const dirty=new Set();let overflow=false,revision=0,cursor=null,walkRoot=null,walked=0,shadowWalks=[];
+  let contextCache=new WeakMap();
+  function invalidate(changes){
+    revision++;contextCache=new WeakMap();
+    for(const change of changes.slice(0,400)){
+      let node=change.target.nodeType===1?change.target:change.target.parentElement;
+      for(let depth=0;node && depth<20;depth++,node=node.parentElement){contextCache.delete(node);if(node.matches?.(selector)){if(dirty.size<600)dirty.add(node);else overflow=true;}}
+      if(change.type==='childList')for(const child of [...change.addedNodes].slice(0,100)){if(child.nodeType===1){if(dirty.size<600)dirty.add(child);else overflow=true;}}
     }
-    const emailSelector='.a3s,[data-message-id],[data-legacy-message-id],[data-tdefense-email]';
-    const selector='a[href],form,article,p,[data-list-item-id^="chat-messages"],[id^="message-content-"],[class*="messageContent"],[data-tdefense-message],[role="article"],[role="listitem"],[class*="message"],[class*="chat-bubble"],'+emailSelector;
-    const visible=node=>node.isConnected && !!node.getClientRects().length && getComputedStyle(node).visibility!=='hidden';
-    const candidates = [...new Set(roots.flatMap(scope => [...scope.querySelectorAll(selector)]))].filter(node => !node.closest(excluded) && visible(node) && !(node.tagName==='P' && node.parentElement?.closest(messageSelector)) && !(!['A','FORM','P'].includes(node.tagName) && node.querySelector(messageSelector)));
-    const rank=node=>node===focusNode || (focusNode && node.contains(focusNode))?0:node.tagName==='A' && node.closest(emailSelector)?1:node.tagName==='FORM'?2:node.closest(emailSelector)?3:node.getBoundingClientRect().top>=0 && node.getBoundingClientRect().top<innerHeight?4:5;
-    candidates.sort((left,right)=>rank(left)-rank(right));
+    if(changes.length>400)overflow=true;
+  }
+  function reset(){dirty.clear();contextCache=new WeakMap();cursor=null;walkRoot=null;walked=0;shadowWalks=[];overflow=false;revision++;}
+  function discovery(focusNode){
+    const candidates=[],seen=new Set();let domTruncated=false,frames=0;
+    const add=node=>{if(candidates.length<199 && node && !seen.has(node) && eligible(node)){seen.add(node);candidates.push(node);}};
+    if(focusNode){add(focusNode);add(focusNode.closest(messageSelector));if(focusNode.tagName==='FORM')add(focusNode);return {candidates,domTruncated:true,frames};}
+    // Coalesce changed subtrees. Work and retained references stay bounded even during churn.
+    for(const node of dirty){dirty.delete(node);if(!node.isConnected)continue;add(node);
+      const walker=document.createTreeWalker(node,NodeFilter.SHOW_ELEMENT);let count=0;
+      while(count++<60 && candidates.length<150 && walker.nextNode())add(walker.currentNode);
+      if(count>=60)domTruncated=true;if(candidates.length>=150)break;
+    }
+    // Bounded point samples prioritize visible mail and forms without querying every link.
+    for(const y of [40,160,320,640,960]){const node=document.elementFromPoint(Math.min(80,innerWidth-1),Math.min(y,innerHeight-1));const target=node?.closest(emailSelector+',form');if(target){add(target);const walker=document.createTreeWalker(target,NodeFilter.SHOW_ELEMENT);let n=0;while(n++<60 && walker.nextNode())add(walker.currentNode);}}
+    if(!cursor){walkRoot=document;cursor=document.createTreeWalker(document,NodeFilter.SHOW_ELEMENT);walked=0;}
+    let count=0;
+    while(count++<500 && candidates.length<199){
+      if(!cursor.nextNode()){cursor=null;break;}
+      const node=cursor.currentNode;walked++;
+      if(node.id==='tdefense-page-guard' || node.closest(excluded))continue;
+      if(node.matches('iframe,frame'))frames++;
+      if(node.shadowRoot){
+        if(shadowWalks.length<12 && !shadowWalks.some(item=>item.root===node.shadowRoot))shadowWalks.push({root:node.shadowRoot,walker:document.createTreeWalker(node.shadowRoot,NodeFilter.SHOW_ELEMENT)});
+        else if(shadowWalks.length>=12)overflow=true;
+      }
+      add(node);
+    }
+    let shadowBudget=120;
+    while(shadowWalks.length && shadowBudget-- >0 && candidates.length<199){
+      const entry=shadowWalks[0];if(!entry.root.host.isConnected){shadowWalks.shift();continue;}
+      if(!entry.walker.nextNode()){shadowWalks.shift();continue;}
+      const node=entry.walker.currentNode;if(node.matches('iframe,frame'))frames++;
+      if(node.shadowRoot && shadowWalks.length<12 && !shadowWalks.some(item=>item.root===node.shadowRoot))shadowWalks.push({root:node.shadowRoot,walker:document.createTreeWalker(node.shadowRoot,NodeFilter.SHOW_ELEMENT)});
+      add(node);
+    }
+    candidates.sort((a,b)=>(a.tagName==='A' && a.closest(emailSelector)?0:a.tagName==='FORM'?1:a.closest(emailSelector)?2:3)-(b.tagName==='A' && b.closest(emailSelector)?0:b.tagName==='FORM'?1:b.closest(emailSelector)?2:3));
+    domTruncated=domTruncated || !!cursor || shadowWalks.length>0 || dirty.size>0 || overflow;
+    if(!cursor && !shadowWalks.length && !dirty.size)overflow=false;return {candidates,domTruncated,frames};
+  }
+  function* collectSteps(reason='manual',focusNode=null){
+    if(reason!=='mutation' || focusNode)contextCache=new WeakMap();
+    const found=discovery(focusNode);const {candidates,frames}=found;let domTruncated=found.domTruncated;
+    let sliceStart=performance.now();
     const elements=[]; const nodes=new Map();
     for (const node of candidates.slice(0,199)) {
       const isForm=node.tagName==='FORM'; const isLink=node.tagName==='A';
       const kind=isForm?'form':isLink?'link':'message';
       const context=isLink?(node.closest(messageSelector) || node.closest('li,p') || node):node;
-      const text=safeText(context,4000); const localFlags=flags(text);
+      let cached=contextCache.get(context);if(!cached){const text=safeText(context,4000);cached={text,flags:flags(text)};contextCache.set(context,cached);}
+      const text=cached.text;const localFlags={...cached.flags,social_signals:[...cached.flags.social_signals]};
       const emailBody=node.closest(emailSelector);const emailText=emailBody?safeText(emailBody,4000):'';
       const commercial=/stop overpaying|programs? starting|prices? start|transparent pricing|no hidden fees|limited.time sale|buy now|special offer|\bdiscount\b|unsubscribe|weight.loss|glp.?1|medications?/.test(emailText.toLowerCase());
       const calls= emailBody?Array.from(emailBody.querySelectorAll('a')).filter(a=>/get started|shop now|buy now|order now|claim offer/i.test(safeText(a,100))).length:0;
@@ -146,21 +187,27 @@
           const decoded=destination(node);const url=decoded.url;item.wrapped_destination=decoded.wrapped;
           const scheme=url.protocol.slice(0,-1);item.target_scheme=['http','https','data','blob','javascript'].includes(scheme)?scheme:'other';
           item.target_origin=origin(url.href);
-          const shown=safeText(node,250).match(/(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:[/:?#]|$)/i);
-          if (shown) item.displayed_origin=origin(/^https?:/i.test(shown[0])?shown[0]:'https://'+shown[0]);
+          const label=safeText(node,250);
+          const repositoryView=url.hostname==='github.com' && /^\/[^/]+\/[^/]+\/blob\//.test(url.pathname);
+          const filenameLabel=repositoryView && label===decodeURIComponent(url.pathname.split('/').pop());
+          const shown=filenameLabel?null:label.match(/(?:https?:\/\/)?(?:www\.)?[a-z0-9-]+(?:\.[a-z0-9-]+)+(?:[/:?#]|$)/i);
+          if (shown && /[a-z]/i.test(shown[0])) item.displayed_origin=origin(/^https?:/i.test(shown[0])?shown[0]:'https://'+shown[0]);
           const file=(node.getAttribute('download') || url.pathname).split('.').pop().toLowerCase().split(/[?#]/)[0];
           const types=['exe','msi','scr','bat','cmd','ps1','js','vbs','jar','apk','dmg','iso','zip'];
-          if (types.includes(file)) {item.download=true;item.file_kind=file;}
+          if (types.includes(file) && (!repositoryView || node.hasAttribute('download'))) {item.download=true;item.file_kind=file;}
           if (node.hasAttribute('download')) item.download=true;
         } catch { /* Invalid destinations are not trusted as evidence. */ }
       }
       // Local-only text signature distinguishes recycled message nodes. Text never leaves this collector.
       const element_id=identify(node,JSON.stringify(item)+'|'+text);item.element_id=element_id;
       elements.push(item); nodes.set(element_id,node);
+      if(performance.now()-sliceStart>=4){yield; sliceStart=performance.now();}
     }
     const pageItem={element_id:identify(document.documentElement,'page:'+location.origin),kind:'page',target_origin:location.origin};elements.push(pageItem);nodes.set(pageItem.element_id,document.documentElement);
-    return {snapshot:{page_origin:location.origin,reason,elements,coverage:{elements_seen:Math.min(candidates.length+1,100000),elements_scanned:elements.length,truncated:candidates.length>199 || domTruncated,frames_unchecked:Math.min(roots.reduce((count,root)=>count+root.querySelectorAll('iframe,frame').length,0),10000)}},nodes};
+    return {snapshot:{page_origin:location.origin,reason,elements,coverage:{elements_seen:Math.min(candidates.length+1,100000),elements_scanned:elements.length,truncated:candidates.length>199 || domTruncated,frames_unchecked:Math.min(frames,10000)}},nodes};
   }
+  function collect(reason='manual',focusNode=null){const steps=collectSteps(reason,focusNode);let result=steps.next();while(!result.done)result=steps.next();return result.value;}
+  async function collectAsync(reason='manual',focusNode=null){const steps=collectSteps(reason,focusNode);let result=steps.next();while(!result.done){await new Promise(resolve=>setTimeout(resolve,0));result=steps.next();}return result.value;}
   function reviewTarget(node){return node?.closest(messageSelector) || node?.closest('form') || node;}
   function identitySource(node){
     const target=reviewTarget(node);if(!target || target===document.documentElement || !target.isConnected || !target.getClientRects().length)return null;
@@ -194,5 +241,5 @@
     const nodes=new Map(elements.map(item=>[item.element_id,collected.nodes.get(item.element_id)]));
     return {snapshot:{...collected.snapshot,elements,coverage:{...collected.snapshot.coverage,elements_scanned:elements.length,trusted_skipped:ignoredNodes.size}},nodes,ignoredNodes,trustedTargets};
   }
-  globalThis.TDefenseSnapshot={collect,identity,identitySource,filterTrusted,reviewTarget,describe:node=>safeText(node,90)};
+  globalThis.TDefenseSnapshot={collect,collectAsync,invalidate,reset,get revision(){return revision;},get pendingCount(){return dirty.size;},identity,identitySource,filterTrusted,reviewTarget,describe:node=>safeText(node,90)};
 })();

@@ -3,6 +3,7 @@
   let active=true,inFlight=false,queued=null,timer=null,latest=null,nodes=new Map();
   let expanded=false,selected=null,guarded=null,previewNode=null,previewDomain=null,hoverTimer=null;
   let manualRequested=false,manualGeneration=0,unread=false,unavailableAnnounced=false,frame=null,nextNumber=0;
+  let pendingFrame=null,scheduleStarted=0;
   let trustGeneration=0,trusted=new Set(),trustedTargets=new Map(),scopeUrl=location.href,drag=null;
   const markerNodes=new Map();
   const findings=new Map(),nodeKeys=new WeakMap(),rows=new Map(),bypass=new WeakMap();
@@ -53,7 +54,7 @@
     for(const [key,item] of rows)if(!findings.has(key)){item.remove();rows.delete(key);}
     for(const [key,entry] of findings){
       let item=rows.get(key);
-      if(!item){item=document.createElement('li');const button=document.createElement('button');button.className='finding-row';button.dataset.findingKey=key;button.onclick=()=>selectFinding(key,true);button.append(document.createElement('strong'),document.createElement('small'),document.createElement('small'));item.append(button);rows.set(key,item);get('findings').append(item);}
+      if(!item){item=document.createElement('li');const button=document.createElement('button');button.className='finding-row';button.dataset.findingKey=key;button.onclick=()=>selectFinding(key,true);button.append(document.createElement('strong'),document.createElement('small'),document.createElement('small'));item.append(button);const trust=document.createElement('button');trust.textContent='Trust this exact content';trust.className='finding-trust';trust.onclick=async event=>{if(!event.isTrusted)return;selectFinding(key);const response=await chrome.runtime.sendMessage({type:'TDEFENSE_OPEN_TRUST'});if(!response?.ok)get('finding-status').textContent='Open the genuine extension toolbar to preview and confirm this selected content.';get('finding-status').hidden=false;};item.append(trust);rows.set(key,item);get('findings').append(item);}
       const button=item.firstElementChild;button.classList.toggle('previous',entry.status!=='current');button.classList.toggle('spam',entry.row.category==='possible_spam');attr(button,'aria-pressed',String(selected===key));attr(button,'data-element-id',entry.row.element_id);
       const text=['! '+entry.number+' · '+entry.row.title,entry.kind+' · '+entry.label,statusText(entry)];
       Array.from(button.children).forEach((child,index)=>{if(child.textContent!==text[index])child.textContent=text[index];});
@@ -120,24 +121,23 @@
   }
   function enqueue(reason,reset=false){queued={reason:reset || queued?.reset?'manual':reason,reset:reset || !!queued?.reset};}
   async function scan(reason='manual',reset=false){
-    if(!active)return;
+    if(!active || (document.hidden && ['periodic','mutation','visible'].includes(reason)))return;
     routeScope();pruneCurrent();
     if(reset){manualRequested=true;manualGeneration++;header();}
     if(inFlight){enqueue(reason,reset);return;}
-    inFlight=true;const generation=manualGeneration;const requestScope=scopeUrl;const requestTrust=trustGeneration;
+    inFlight=true;const requestRevision=globalThis.TDefenseSnapshot.revision;const generation=manualGeneration;const requestScope=scopeUrl;const requestTrust=trustGeneration;
     try{
-      const collected=await globalThis.TDefenseSnapshot.filterTrusted(globalThis.TDefenseSnapshot.collect(reason,previewNode?.isConnected?previewNode:null),trusted);if(!active)return;if(requestTrust!==trustGeneration){enqueue('manual');return;}trustedTargets=collected.trustedTargets || new Map();
+      const collected=await globalThis.TDefenseSnapshot.filterTrusted(await globalThis.TDefenseSnapshot.collectAsync(reason,reason==='interaction' && previewNode?.isConnected?previewNode:null),trusted);if(!active)return;if(requestTrust!==trustGeneration || requestRevision!==globalThis.TDefenseSnapshot.revision || requestScope!==location.href){enqueue('manual');return;}trustedTargets=collected.trustedTargets || new Map();
       let response=await chrome.runtime.sendMessage({type:'TDEFENSE_SNAPSHOT',snapshot:collected.snapshot});if(!active)return;
       if(response?.code==='TRANSIENT'){await new Promise(resolve=>setTimeout(resolve,600));if(!active)return;if(requestTrust!==trustGeneration || requestScope!==location.href || generation!==manualGeneration){enqueue('mutation');return;}response=await chrome.runtime.sendMessage({type:'TDEFENSE_SNAPSHOT',snapshot:collected.snapshot});if(!active)return;}
       if(!response?.ok){if(response?.code==='PAUSED'){stop();return;}if(response?.code==='RETRY'){pending();enqueue('manual',reset || manualRequested);return;}throw new Error(response?.error || 'Local page checks are unavailable.');}
-      const current=await globalThis.TDefenseSnapshot.filterTrusted(globalThis.TDefenseSnapshot.collect(reason,previewNode?.isConnected?previewNode:null),trusted);
-      if(requestTrust!==trustGeneration || requestScope!==scopeUrl || generation!==manualGeneration || JSON.stringify(current.snapshot)!==JSON.stringify(collected.snapshot)){pending();enqueue('mutation',reset || manualRequested);return;}
+      if(requestTrust!==trustGeneration || requestScope!==location.href || generation!==manualGeneration || requestRevision!==globalThis.TDefenseSnapshot.revision){pending();enqueue('mutation',reset || manualRequested);return;}
       const focused=collected.snapshot.elements.find(row=>collected.nodes.get(row.element_id)===previewNode);previewDomain=focused?.target_origin?new URL(focused.target_origin).hostname:null;
       render(response.result,collected,reset);
     }catch(error){if(active){if(requestScope!==location.href || generation!==manualGeneration || requestTrust!==trustGeneration){routeScope();enqueue('mutation');}else unavailable(error.message || 'Local page checks are unavailable.');}}
     finally{inFlight=false;if(active && queued){const again=queued;queued=null;setTimeout(()=>scan(again.reason,again.reset),250);}}
   }
-  function schedule(reason){clearTimeout(timer);timer=setTimeout(()=>scan(reason),800);}
+  function schedule(reason){if(!scheduleStarted)scheduleStarted=performance.now();clearTimeout(timer);timer=setTimeout(()=>{scheduleStarted=0;scan(reason);},Math.max(0,Math.min(800,1600-(performance.now()-scheduleStarted))));}
   function warningFor(element){
     const direct=[...findings.values()].find(entry=>entry.node===element);if(direct)return direct;
     return [...findings.values()].find(entry=>entry.node?.isConnected && entry.node.contains(element)) || null;
@@ -154,7 +154,7 @@
     if(isLocallyTrusted(element))return;
     if(bypass.has(element)){const approved=bypass.get(element);bypass.delete(element);if(approved===signature)return;}
     if(!warningFor(element) && !localConcern(element))return;
-    event.preventDefault();event.stopImmediatePropagation();guarded={element,kind,submitter:event.submitter || null,signature};expanded=true;renderDetails();get('continue').disabled=true;header();details();scan('interaction');
+    event.preventDefault();event.stopImmediatePropagation();guarded={element,kind,submitter:event.submitter || null,signature};previewNode=element;expanded=true;renderDetails();get('continue').disabled=true;header();details();scan('interaction');
   }
   const click=event=>{if(!active || ownEvent(event) || event.button!==0)return;const link=event.target.closest?.('a[href]');if(link)pauseAction(event,link,'link');};
   const submit=event=>{if(active && !ownEvent(event) && event.target instanceof HTMLFormElement)pauseAction(event,event.target,'form');};
@@ -167,11 +167,11 @@
   const resize=()=>{clampPanel();queueHighlights();schedule('visible');};
   window.addEventListener('click',click,true);window.addEventListener('submit',submit,true);window.addEventListener('contextmenu',inspect,true);window.addEventListener('scroll',scroll,true);window.addEventListener('resize',resize);
   document.addEventListener('mouseover',hover,true);document.addEventListener('focusin',focus,true);document.addEventListener('visibilitychange',visible);
-  const observer=new MutationObserver(changes=>{if(changes.some(change=>change.target!==host && !host.contains(change.target) && !(change.type==='childList' && [...change.addedNodes,...change.removedNodes].every(node=>node===host)))){routeScope();pending();schedule('mutation');}});
+  const observer=new MutationObserver(changes=>{const relevant=changes.filter(change=>change.target!==host && !host.contains(change.target) && !(change.type==='childList' && [...change.addedNodes,...change.removedNodes].every(node=>node===host)));if(!relevant.length)return;globalThis.TDefenseSnapshot.invalidate(relevant);routeScope();if(pendingFrame===null)pendingFrame=requestAnimationFrame(()=>{pendingFrame=null;if(active)pending();});schedule('mutation');});
   observer.observe(document.documentElement,{childList:true,subtree:true,characterData:true,attributes:true,attributeFilter:['href','action','type','autocomplete','role','download','form','formaction','formmethod','formtarget','method','enctype','target','name','id','placeholder','class','hidden','style','disabled','readonly','required']});
   function liveNode(node){return !!node?.isConnected && !!node.getClientRects().length && getComputedStyle(node).visibility!=='hidden';}
   function pruneCurrent(){let changed=false;for(const [key,entry] of findings)if(!liveNode(entry.node)){findings.delete(key);changed=true;}if(changed){if(!findings.has(selected))selected=findings.keys().next().value || null;renderList();renderDetails();header();queueHighlights();}}
-  function routeScope(){if(scopeUrl!==location.href){scopeUrl=location.href;manualGeneration++;findings.clear();rows.forEach(row=>row.remove());rows.clear();nodes.clear();previewNode=null;selected=null;guarded=null;latest=null;renderList();renderDetails();header();queueHighlights();return true;}return false;}
+  function routeScope(){if(scopeUrl!==location.href){scopeUrl=location.href;manualGeneration++;globalThis.TDefenseSnapshot.reset();findings.clear();rows.forEach(row=>row.remove());rows.clear();nodes.clear();previewNode=null;selected=null;guarded=null;latest=null;renderList();renderDetails();header();queueHighlights();return true;}return false;}
   async function refreshTrust(){const generation=++trustGeneration;trusted=new Set();trustedTargets.clear();const result=await chrome.runtime.sendMessage({type:'TDEFENSE_TRUST_LIST'});if(!result?.ok)throw new Error('Local trust settings could not be read. Elements will be checked.');if(generation===trustGeneration)trusted=new Set(result.entries);}
   function isLocallyTrusted(element){const target=globalThis.TDefenseSnapshot.reviewTarget(element);const expected=trustedTargets.get(target);return !!expected && globalThis.TDefenseSnapshot.identitySource(target)?.source===expected;}
   let positionGeneration=0;
@@ -187,9 +187,9 @@
   get('move').onpointerup=()=>{if(drag){drag=null;savePosition().catch(()=>{});}};
   get('move').onkeydown=event=>{const delta={ArrowLeft:[-20,0],ArrowRight:[20,0],ArrowUp:[0,-20],ArrowDown:[0,20]}[event.key];if(!delta)return;event.preventDefault();const rect=shell.getBoundingClientRect();movePanel(rect.left+delta[0],rect.top+delta[1]);savePosition().catch(()=>{});};
   const routeInterval=setInterval(routeEvent,1000);
-  const interval=setInterval(()=>scan('periodic'),8000);
+  const interval=setInterval(()=>{if(!document.hidden)scan('periodic');},8000);
   function stop(){
-    active=false;queued=null;window.removeEventListener('hashchange',routeEvent);window.removeEventListener('popstate',routeEvent);clearTimeout(timer);clearTimeout(hoverTimer);clearInterval(interval);clearInterval(routeInterval);if(frame!==null)cancelAnimationFrame(frame);observer.disconnect();
+    active=false;queued=null;if(pendingFrame!==null)cancelAnimationFrame(pendingFrame);globalThis.TDefenseSnapshot.reset();window.removeEventListener('hashchange',routeEvent);window.removeEventListener('popstate',routeEvent);clearTimeout(timer);clearTimeout(hoverTimer);clearInterval(interval);clearInterval(routeInterval);if(frame!==null)cancelAnimationFrame(frame);observer.disconnect();
     window.removeEventListener('click',click,true);window.removeEventListener('submit',submit,true);window.removeEventListener('contextmenu',inspect,true);window.removeEventListener('scroll',scroll,true);window.removeEventListener('resize',resize);
     document.removeEventListener('mouseover',hover,true);document.removeEventListener('focusin',focus,true);document.removeEventListener('visibilitychange',visible);chrome.runtime.onMessage.removeListener(messageHandler);host.remove();markerNodes.clear();trustedTargets.clear();findings.clear();rows.clear();nodes.clear();guarded=null;delete globalThis.TDefenseGuard;
   }

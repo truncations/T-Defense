@@ -15,7 +15,7 @@ get('pair').onclick=async()=>{try {await send('PAIR',{key:get('key').value.trim(
 for(const [id,type] of [['scan','SCAN'],['stop','STOP']])get(id).onclick=async()=>{get(id).disabled=true;try {await send(type);await refresh();}catch(error){get('status').textContent=error.message;}finally{get('start').disabled=false;}};
 get('reputation').onchange=async()=>{try{await send('REPUTATION',{enabled:get('reputation').checked});await refresh();}catch(error){get('status').textContent=error.message;}};
 setInterval(()=>refresh().catch(()=>{}),1500);
-refresh().catch(error=>{get('status').textContent=error.message;});
+refresh().then(async()=>{const key='trustRequested:'+tabId;const request=await chrome.storage.session.get(key);if(request[key]){await chrome.storage.session.remove(key);get('trust-preview').click();}}).catch(error=>{get('status').textContent=error.message;});
 
 get('start').onclick=async()=>{try{const granted=await chrome.permissions.request({origins:['http://*/*','https://*/*']});if(!granted)throw new Error('Website access was not granted. Continuous monitoring remains off.');await send('START');await refresh();}catch(error){setText('status',error.message);}};
 get('trust-preview').onclick=async()=>{try{const result=await send('TRUST_PREVIEW');trustToken=result.candidate.token;setText('trust-candidate',result.candidate.origin+' · '+result.candidate.kind+' · '+result.candidate.preview);get('trust-save').disabled=false;}catch(error){setText('trust-candidate',error.message);get('trust-save').disabled=true;}};
