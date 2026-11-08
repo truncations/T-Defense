@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Temporary download test</title></head>
+<body>
+<p>DEMO PAGE – NOT A REAL COMPANY – built for hackUTD</p>
+<p>This button works like chat apps: it makes a temporary file link, clicks it, then removes it at once.</p>
+<button id="save">Download report</button>
+<script>
+document.getElementById('save').addEventListener('click',()=>{
+  const url=URL.createObjectURL(new Blob(['synthetic report'],{type:'text/plain'}));
+  const link=document.createElement('a');link.href=url;link.download='report.txt';
+  document.body.append(link);link.click();link.remove();URL.revokeObjectURL(url);
+});
+</script>
+</body>
+</html>

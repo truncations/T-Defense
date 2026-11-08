@@ -1,6 +1,5 @@
 """Real-page structural assessment. Never fetches URLs or accepts page/form text."""
 
-import json
 import re
 import secrets
 from datetime import UTC, datetime
@@ -27,25 +26,9 @@ from app.reputation import REPUTATION, api_key
 from app.social_rules import SOCIAL_RULES, SPAM_SIGNALS
 
 router = APIRouter()
-PAIR_KEY = secrets.token_urlsafe(32)
 LOCK = Lock()
 STATS = {"processed_scans": 0, "warning_findings": 0, "last_scan_at": None}
 CLIENT_ID = re.compile(r"[a-p]{32}")
-APPROVAL_FILE = (
-    Path(__file__).resolve().parent.parent / "work" / "approved_extensions.json"
-)
-PENDING_CLIENTS = {}
-SESSION_KEYS = {}
-
-
-def approved_clients():
-    try:
-        rows = json.loads(APPROVAL_FILE.read_text())
-        return [
-            row for row in rows if isinstance(row, str) and CLIENT_ID.fullmatch(row)
-        ][:32]
-    except (OSError, ValueError, TypeError):
-        return []
 
 
 LOCAL_HOSTS = {"localhost:8000", "127.0.0.1:8000"}
@@ -320,113 +303,17 @@ def local_host(request: Request):
 
 
 def authorize(request: Request):
+    """Accept only the T-Defense extension calling the loopback service.
+
+    There is no pairing step: the browser always sets the Origin header on
+    extension fetches, and the custom client header forces a CORS preflight,
+    so ordinary websites cannot reach these endpoints.
+    """
     local_host(request)
-    key = request.headers.get("x-tdefense-key", "")
     client = request.headers.get("x-tdefense-client", "")
     origin = request.headers.get("origin", "")
-    with LOCK:
-        valid_session = (
-            client in approved_clients()
-            and client in SESSION_KEYS
-            and secrets.compare_digest(key, SESSION_KEYS[client])
-        )
-        valid_key = secrets.compare_digest(key, PAIR_KEY) or valid_session
-    if (
-        not CLIENT_ID.fullmatch(client)
-        or (origin and origin != "chrome-extension://" + client)
-        or not valid_key
-    ):
-        raise HTTPException(
-            403, "Pair the extension with the current local backend session."
-        )
-
-
-@router.get("/api/extension/pairing")
-def pairing(request: Request):
-    local_host(request)
-    if request.client is None or request.client.host not in {"127.0.0.1", "::1"}:
-        raise HTTPException(403, "Pair only from this computer.")
-    if request.headers.get("sec-fetch-site") not in {None, "same-origin", "none"}:
-        raise HTTPException(403, "Open the local setup page directly.")
-    origin = request.headers.get("origin")
-    if origin and origin not in {"http://localhost:8000", "http://127.0.0.1:8000"}:
-        raise HTTPException(403, "Open the local setup page directly.")
-    return JSONResponse(
-        {"pairing_code": PAIR_KEY},
-        headers={"Cache-Control": "no-store", "X-Content-Type-Options": "nosniff"},
-    )
-
-
-def setup_authorize(request: Request):
-    pairing(request)
-    if not secrets.compare_digest(
-        request.headers.get("x-tdefense-setup", ""), PAIR_KEY
-    ):
-        raise HTTPException(403, "Open local setup to approve this installation.")
-
-
-@router.post("/api/extension/auto-pair")
-def auto_pair(request: Request):
-    local_host(request)
-    client = request.headers.get("x-tdefense-client", "")
-    if (
-        request.client is None
-        or request.client.host not in {"127.0.0.1", "::1"}
-        or not CLIENT_ID.fullmatch(client)
-        or request.headers.get("origin") != "chrome-extension://" + client
-    ):
-        raise HTTPException(403, "Use the genuine extension on this computer.")
-    with LOCK:
-        if client not in approved_clients():
-            if len(PENDING_CLIENTS) >= 32 and client not in PENDING_CLIENTS:
-                raise HTTPException(429, "Too many pending installation requests.")
-            PENDING_CLIENTS[client] = True
-            return JSONResponse(
-                {"approval_required": True}, headers={"Cache-Control": "no-store"}
-            )
-        key = SESSION_KEYS.setdefault(client, secrets.token_urlsafe(32))
-    return JSONResponse({"pairing_code": key}, headers={"Cache-Control": "no-store"})
-
-
-@router.get("/api/extension/installations")
-def installations(request: Request):
-    setup_authorize(request)
-    with LOCK:
-        return JSONResponse(
-            {"pending": list(PENDING_CLIENTS), "approved": approved_clients()},
-            headers={"Cache-Control": "no-store"},
-        )
-
-
-class InstallationDecision(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-    client_id: str = Field(pattern=r"^[a-p]{32}$")
-    approve: bool
-
-
-@router.post("/api/extension/installations")
-def decide_installation(decision: InstallationDecision, request: Request):
-    setup_authorize(request)
-    with LOCK:
-        approved = approved_clients()
-        if decision.approve:
-            if decision.client_id not in PENDING_CLIENTS:
-                raise HTTPException(409, "Request pairing from this extension first.")
-            if decision.client_id not in approved:
-                if len(approved) >= 32:
-                    raise HTTPException(
-                        409, "Revoke an installation before approving another."
-                    )
-                approved.append(decision.client_id)
-        else:
-            approved = [row for row in approved if row != decision.client_id]
-            SESSION_KEYS.pop(decision.client_id, None)
-        APPROVAL_FILE.parent.mkdir(parents=True, exist_ok=True)
-        temporary = APPROVAL_FILE.with_suffix(".tmp")
-        temporary.write_text(json.dumps(approved))
-        temporary.replace(APPROVAL_FILE)
-        PENDING_CLIENTS.pop(decision.client_id, None)
-    return {"ok": True}
+    if not CLIENT_ID.fullmatch(client) or origin != "chrome-extension://" + client:
+        raise HTTPException(403, "Only the T-Defense extension can use this service.")
 
 
 @router.post("/api/extension/connect")
@@ -476,8 +363,6 @@ async def assess_page(request: Request):
     result = await REPUTATION.enrich(
         snapshot, result, request.headers.get("x-tdefense-reputation") == "enabled"
     )
-    # Reject an installation revoked during optional reputation work.
-    authorize(request)
     with LOCK:
         STATS["processed_scans"] += 1
         STATS["warning_findings"] += result["warning_count"]

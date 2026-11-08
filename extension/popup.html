@@ -1,1 +1,89 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><title>T-Defense controls</title><link rel="stylesheet" href="popup.css"><script defer src="popup.js"></script></head><body><header><span class="mark">T</span><div><h1>T-Defense</h1><p>Live page guard</p></div></header><p id="page" class="page">Current website</p><section><button id="auto-pair">Connect automatically</button><p id="installation"></p><a href="http://127.0.0.1:8000/" target="_blank" rel="noreferrer">Local installation approval →</a><details><summary>Manual pairing fallback</summary><label for="key">Backend pairing code</label><input id="key" type="password" autocomplete="off" placeholder="Paste code from local setup"><button id="pair">Pair backend</button><a href="http://127.0.0.1:8000/" target="_blank" rel="noreferrer">Open local setup →</a></details></section><p id="status" role="status">Loading…</p><div class="controls"><button id="start" class="primary">Start everywhere</button><button id="scan">Check now</button><button id="stop">Stop everywhere</button></div><section><h2>Detected elements</h2><p id="finding-coverage"></p><ol id="popup-findings" aria-label="Detected elements"></ol></section><section><label><input id="reputation" type="checkbox" style="width:auto"> Enable VirusTotal domain checks for this tab</label><p>Public hostnames are sent to VirusTotal and added to its community dataset. Avoid confidential hostnames. No email text, full URLs or typed values. A configured backend key is required.</p></section><section><button id="trust-preview">Preview selected element for trust</button><p id="trust-candidate">Select a finding on the page, then preview it here. Trust is your choice, not a safety certification.</p><button id="trust-save" disabled>Trust this exact content</button><details id="trust-manager"><summary>Manage local trusted elements</summary><div id="trusted-entries" style="max-height:170px;overflow:auto"></div><button id="trust-clear">Clear all trust decisions</button></details><button id="reset-position">Reset panel position</button></section><div class="facts"><p id="details">No completed check yet.</p><p>Start everywhere requests website access once. Monitoring then follows supported pages and tabs until Stop everywhere. Keep the local backend running; approved installations reconnect automatically after restarts.</p><p>No passwords, typed values, message text or page HTML sent. Rules can miss phishing.</p></div></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>T-Defense</title>
+<link rel="stylesheet" href="popup.css">
+<script defer src="popup.js"></script>
+</head>
+<body>
+<main id="home-view">
+  <header class="top">
+    <span class="mark" aria-hidden="true">T</span>
+    <div class="brand"><h1>T-Defense</h1><p>Live page guard</p></div>
+    <button id="open-settings" class="icon-button" aria-label="Settings" title="Settings">
+      <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </header>
+
+  <p class="host-pill"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M2 12h20M12 2a15 15 0 0 1 0 20M12 2a15 15 0 0 0 0 20"/></svg><span id="page">Current website</span></p>
+
+  <section id="off-card" class="card">
+    <h2>Protection is off</h2>
+    <p class="muted">Start to watch the pages you visit. This page has not been checked yet.</p>
+  </section>
+
+  <section id="on-card" class="card row" hidden>
+    <div><h2>Protection is on</h2><p class="muted">All sites, checked automatically</p></div>
+    <button id="protection-switch" class="switch" role="switch" aria-checked="true" aria-label="Protection everywhere"><span></span></button>
+  </section>
+
+  <section id="page-card" class="card page-card" hidden>
+    <div class="row"><span class="eyebrow">This page</span><span id="page-badge" class="badge">CHECKING</span></div>
+    <h3 id="page-summary">Checking this page…</h3>
+    <p id="page-time" class="muted"></p>
+    <button id="view-details" class="primary">View details</button>
+    <div id="details-panel" hidden>
+      <p id="finding-coverage" class="small"></p>
+      <ol id="popup-findings" aria-label="Detected elements"></ol>
+    </div>
+  </section>
+
+  <section id="trust-card" class="card" hidden>
+    <h2>Trust this exact content?</h2>
+    <p id="trust-candidate" class="muted">Select a finding on the page, then preview it here.</p>
+    <p class="small">Trust is your choice, not a safety certification. Changed content is checked again.</p>
+    <div class="row gap"><button id="trust-save" class="primary" disabled>Trust it</button><button id="trust-cancel" class="secondary">Cancel</button></div>
+  </section>
+
+  <p id="status" class="status" role="status" hidden></p>
+
+  <button id="start" class="primary big">Start everywhere</button>
+  <button id="scan" class="secondary big">Check now</button>
+
+  <p id="footnote" class="footnote">Start asks for website access once. Monitoring stays on your computer.</p>
+</main>
+
+<main id="settings-view" hidden>
+  <header class="top">
+    <button id="close-settings" class="icon-button" aria-label="Back">‹</button>
+    <h1 class="settings-title">Settings</h1>
+  </header>
+
+  <section class="card">
+    <div class="row"><div><h3>VirusTotal checks</h3><p class="muted">For this tab only</p></div>
+      <button id="reputation" class="switch" role="switch" aria-checked="false" aria-label="VirusTotal checks for this tab"><span></span></button></div>
+    <hr>
+    <p class="small">Shares public hostnames with VirusTotal, which adds them to its community dataset — avoid confidential hostnames. Never email text, full URLs or typed values. Needs a backend key.</p>
+  </section>
+
+  <section class="card">
+    <div class="row"><div><h3>Trusted elements</h3><p id="trusted-count" class="muted">0 saved</p></div>
+      <button id="trust-manage" class="secondary">Manage</button></div>
+    <div id="trust-manager" hidden>
+      <div id="trusted-entries"></div>
+      <button id="trust-clear" class="link">Clear all trust decisions</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Backend</h3>
+    <p class="muted">127.0.0.1:8000</p>
+    <p id="backend-state" class="small"></p>
+    <p id="installation" class="mono"></p>
+  </section>
+
+  <button id="reset-position" class="secondary big">Reset panel position</button>
+</main>
+</body>
+</html>

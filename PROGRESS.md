@@ -1,5 +1,10 @@
 # T-Defense progress
 
+## Local AI preparation — November 8, 2026
+- Added offline, whitelisted evidence projection and strict candidate-output validation with synthetic tests. No inference calls, model-generated prose, installations or external investigation enabled.
+- Verified 29 targeted local-AI/safety tests and Ruff checks; no full-suite or model-quality claim.
+- Actual Ollama inference and button-triggered real-page inspection are not enabled. See LOCAL_AI_STATUS.md. Existing mock investigator and downloadable 0.5.2 package are unchanged.
+
 ## Missed brand-lookalike link — November 8, 2026
 - Reproduced the bare https://www.paypal.ai/scam link producing no warning in the shipped collector/assessment.
 - Added a narrow local hostname cue for PayPal-like destinations, with recognized-domain boundaries and no path/text collection. Kept marketplace/GitHub rules unchanged; packaged as 0.5.2.
@@ -178,26 +183,3 @@
 - Reproduced automatic pairing rejecting a valid manual connection and reinjection retaining old monitor. Both regressions now pass; automatic pairing opens local approval for unapproved installations.
 - Version-aware replacement, nonzero yellow/magenta pulse, large close target and actions-area trust initiation implemented.
 - Combined native regressions: 37 passed; ruff checked. Windows/YouTube and three pre-existing investigator shutdown errors remain unverified/unresolved.
-
-
-## Disposable Hyper-V runner — SOFTWARE VERIFIED / DEPLOYMENT BLOCKED (2026-11-08)
-- User requests disposable VM/network boundary for future user-invoked website evidence/AI explanation. Current checkout0.5.2; handout0.6 files absent in local and update ZIP, so separate vm_kit infrastructure added without replacing app/UI. Original investigator allowlist unchanged.
-- Preflight actual: host edition Professional, current token not Administrator, Hyper-V cmdlets unavailable, existing OfflineKit found, no Windows ISO or clean VHDX supplied. No Windows feature installed, physical network changed, VM booted or real target visited.
-- Added administrator-reviewed Create/Prepare/Seal/Inspect workflow, offline pinned dependency reuse, standalone sealedbase SHA256 + disposable diffdisk, dedicated internal switch with exact ACL readback and no NAT/default guest route. Public-only authenticated proxy rejects mixed/private/special/multicast DNS, pins numeric connect IP, excludes local routes and discovered/supplied public egress addresses. Strict budgets and same-job boundary probes.
-- Safety review prompted independent verified teardown, ownership checks, exact ACL readback, multicast exclusions, and replacement of post-buffer PowerShell result limits. Remoting is closed before start release; result broker bounds raw JSON before schema validation/atomic write. Optional local AI sees flags only and selects fixed evidence-backed IDs; host recomputes full fact summary.
-- Initial38 new infrastructure tests pass; Ruff/PowerShell parse/preflight pass. Full app regression and final source review pending. Actual Hyper-V deployment, Windows base readiness, live network enforcement, local-model timing and extension job-button integration remain UNVERIFIED/inactive.
-
-- Full run222passed/8failed: all8 reproduced against unchanged starting HEAD496f379 (six hardcoded /tmp screenshot paths denied on Windows, two tests assumed a separate localhost8080 server). Fixed only test portability: pytest-owned screenshot paths and intercepted synthetic8080 fixtures. Application semantics untouched. New worker Chromium tests substitute proxy/network with fully intercepted synthetic pages; host app sandbox needs test-only chromium_sandbox=False, while production/guest sealing retain True. Actual guest browser readiness remains unverified.
-
-- Next full run234passed/1failed: remaining legacy assertion expected an invalid session key to stay unavailable, but v0.5 approved-installation auto-pairing correctly repaired it. Updated test to require a fresh checked scan and restored paired key, without changing product behavior. Latest VM-only45tests pass11.79s including transient frames, form limits, tampered ACL objects, pre-start egress gate, synthetic real-browser checks and AI schema. Final full rerun follows.
-
-- Final current-source full regression:237passed244.26s, including45newVM-kit checks. Focused45passed11.79s and actualextensionreconnect1passed29.27s. GlobalRuffcheck/format and whitespace clean; safety software-review OK and demo workflow-review PASS. Source-only ZIP byte-matched and first-steps/full guide prepared outside repo; runtime/media/OS/model/keys excluded.
-- VM deployment remains BLOCKED by missing administrator execution/Hyper-V management and absent Windows media/base. No feature installed, host switch/firewall created, VM booted, real target visited or local Ollama call performed. Exact hardware ACL enforcement, guest sandbox readiness, disposal and model latency are not verified. Future extension/API integration is not implemented. Source milestone may be committed locally; deployment readiness is not DONE.
-
-
-## Windows PowerShell sealing fix — IN VERIFICATION (2026-11-08)
-- User reached SealBase but screenshot showed native Python File<string> failure. Reproduced actual PS5.1 stripping embedded double quotes from Python -c (print("QUOTE_PROBE") became print(QUOTE_PROBE)). Replaced guest browser probe with a copied script file and bounded JSON diagnostics. Host policy helpers now use module CLI rather than inline Python; route-validation failures stop switch creation.
-- Prepare/Seal explicitly reject Server Core with Desktop Experience guidance. No VM/disk changed by this session; existing prepared base can retry sealing with patched source. Actual guest OS/browser status still awaits user-run result. Verification pending.
-
-- Focused current-source50tests passed14.91s (all45VM tests plus5sealing/PS5.1 regressions); globalRuff/formatclean. Actual PS5.1 preserves quoted HTML through file invocation and host policy module CLIs. Reviewer safetyOK/demoPASS conditionalonfullregression.
-- Full regression cannot run cleanly while an existing replay backend occupies8000:213passed,21fixtureerrors and8dependentfailures. Hostsocket/process enumeration is unavailable to this session despite reachable health endpoint. Asked user to stop the backend while leaving the VM running; full rerun/localcommit pending. No bypass of VM readiness checks, no disk recreation, no base seal claimed.

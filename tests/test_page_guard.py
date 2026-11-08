@@ -4,12 +4,10 @@ from zipfile import ZipFile
 import pytest
 from fastapi.testclient import TestClient
 
-from app import page_guard
 from app.main import app
 
 CLIENT = TestClient(app, base_url="http://localhost:8000", client=("127.0.0.1", 50000))
 HEADERS = {
-    "X-TDefense-Key": page_guard.PAIR_KEY,
     "X-TDefense-Client": "a" * 32,
     "Origin": "chrome-extension://" + "a" * 32,
 }
@@ -150,26 +148,29 @@ def test_partial_coverage_is_not_a_clean_page_claim():
     assert post(body).json()["verdict"] == "inconclusive"
 
 
-def test_pairing_is_loopback_same_origin_and_not_cached():
-    response = CLIENT.get(
-        "/api/extension/pairing", headers={"Sec-Fetch-Site": "same-origin"}
-    )
-    assert (
-        response.status_code == 200 and response.headers["cache-control"] == "no-store"
-    )
-    assert response.json()["pairing_code"] == page_guard.PAIR_KEY
-    assert (
-        CLIENT.get(
-            "/api/extension/pairing", headers={"Sec-Fetch-Site": "cross-site"}
-        ).status_code
-        == 403
-    )
-    assert (
-        CLIENT.get(
-            "/api/extension/pairing", headers={"Host": "evil.test:8000"}
-        ).status_code
-        == 403
-    )
+@pytest.mark.parametrize(
+    "override",
+    [
+        {"Origin": "https://evil.test"},
+        {"Origin": "chrome-extension://" + "c" * 32},
+        {"Host": "evil.test:8000"},
+        {"Origin": ""},
+        {"X-TDefense-Client": "not-an-extension"},
+    ],
+)
+def test_service_connects_automatically_only_for_the_extension(override):
+    assert CLIENT.post("/api/extension/connect", headers=HEADERS).status_code == 200
+    bad = {**HEADERS, **override}
+    assert CLIENT.post("/api/extension/connect", headers=bad).status_code == 403
+    assert post(snapshot(), bad).status_code == 403
+
+
+def test_pairing_endpoints_are_gone():
+    assert CLIENT.get("/api/extension/pairing").status_code in {404, 405}
+    assert CLIENT.post("/api/extension/auto-pair", headers=HEADERS).status_code in {
+        404,
+        405,
+    }
 
 
 def test_payload_limit_and_no_browser_investigation(monkeypatch):
@@ -195,10 +196,6 @@ def test_extension_bundle_contains_only_fixed_public_files():
         assert "manifest.json" in bundle.namelist() and not any(
             name.startswith(".env") for name in bundle.namelist()
         )
-        assert all(
-            page_guard.PAIR_KEY.encode() not in bundle.read(name)
-            for name in bundle.namelist()
-        )
 
 
 def test_provider_configuration_exposes_only_readiness(monkeypatch):
@@ -213,124 +210,3 @@ def test_provider_configuration_exposes_only_readiness(monkeypatch):
         ).status_code
         == 403
     )
-
-
-@pytest.fixture
-def isolated_pairing(monkeypatch, tmp_path):
-    monkeypatch.setattr(page_guard, "APPROVAL_FILE", tmp_path / "approved.json")
-    monkeypatch.setattr(page_guard, "PENDING_CLIENTS", {})
-    monkeypatch.setattr(page_guard, "SESSION_KEYS", {})
-
-
-def test_automatic_pairing_requires_local_installation_approval(isolated_pairing):
-    auto_headers = {
-        "X-TDefense-Client": "b" * 32,
-        "Origin": "chrome-extension://" + "b" * 32,
-    }
-    pending = CLIENT.post("/api/extension/auto-pair", headers=auto_headers)
-    assert pending.json() == {"approval_required": True}
-    assert pending.headers["cache-control"] == "no-store"
-    assert (
-        CLIENT.post(
-            "/api/extension/installations",
-            json={"client_id": "b" * 32, "approve": True},
-        ).status_code
-        == 403
-    )
-    setup = {"X-TDefense-Setup": page_guard.PAIR_KEY, "Sec-Fetch-Site": "same-origin"}
-    assert (
-        CLIENT.post(
-            "/api/extension/installations",
-            headers=setup,
-            json={"client_id": "b" * 32, "approve": True},
-        ).status_code
-        == 200
-    )
-    paired = CLIENT.post("/api/extension/auto-pair", headers=auto_headers).json()
-    key = paired["pairing_code"]
-    assert key != page_guard.PAIR_KEY
-    assert (
-        CLIENT.post(
-            "/api/extension/connect", headers={**auto_headers, "X-TDefense-Key": key}
-        ).status_code
-        == 200
-    )
-    assert key not in page_guard.APPROVAL_FILE.read_text()
-    assert (
-        CLIENT.post(
-            "/api/extension/installations",
-            headers=setup,
-            json={"client_id": "b" * 32, "approve": False},
-        ).status_code
-        == 200
-    )
-    assert (
-        CLIENT.post(
-            "/api/extension/connect", headers={**auto_headers, "X-TDefense-Key": key}
-        ).status_code
-        == 403
-    )
-
-
-@pytest.mark.parametrize(
-    "override",
-    [
-        {"Origin": "https://evil.test"},
-        {"Origin": "chrome-extension://" + "c" * 32},
-        {"Host": "evil.test:8000"},
-        {"Origin": ""},
-    ],
-)
-def test_automatic_pairing_rejects_untrusted_request_context(
-    override, isolated_pairing
-):
-    headers = {
-        "X-TDefense-Client": "b" * 32,
-        "Origin": "chrome-extension://" + "b" * 32,
-        **override,
-    }
-    assert CLIENT.post("/api/extension/auto-pair", headers=headers).status_code == 403
-
-
-def test_backend_restart_rotates_approved_installation_session(isolated_pairing):
-    page_guard.APPROVAL_FILE.write_text('["' + "b" * 32 + '"]')
-    headers = {
-        "X-TDefense-Client": "b" * 32,
-        "Origin": "chrome-extension://" + "b" * 32,
-    }
-    old = CLIENT.post("/api/extension/auto-pair", headers=headers).json()[
-        "pairing_code"
-    ]
-    page_guard.SESSION_KEYS.clear()
-    new = CLIENT.post("/api/extension/auto-pair", headers=headers).json()[
-        "pairing_code"
-    ]
-    assert old != new
-    assert (
-        CLIENT.post(
-            "/api/extension/connect", headers={**headers, "X-TDefense-Key": old}
-        ).status_code
-        == 403
-    )
-
-
-def test_revocation_during_assessment_rejects_delayed_result(
-    isolated_pairing, monkeypatch
-):
-    client_id = "b" * 32
-    page_guard.APPROVAL_FILE.write_text('["' + client_id + '"]')
-    headers = {
-        "X-TDefense-Client": client_id,
-        "Origin": "chrome-extension://" + client_id,
-    }
-    key = CLIENT.post("/api/extension/auto-pair", headers=headers).json()[
-        "pairing_code"
-    ]
-
-    async def revoke_while_pending(snapshot, result, enabled):
-        with page_guard.LOCK:
-            page_guard.SESSION_KEYS.pop(client_id, None)
-        return result
-
-    monkeypatch.setattr(page_guard.REPUTATION, "enrich", revoke_while_pending)
-    assert post(snapshot(), {**headers, "X-TDefense-Key": key}).status_code == 403

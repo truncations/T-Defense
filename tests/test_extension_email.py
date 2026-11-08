@@ -100,9 +100,6 @@ def test_email_priority_live_reputation_and_persistent_review(
     reputation_server, tmp_path
 ):
     state, reset = reputation_server
-    key = httpx.get("http://localhost:8000/api/extension/pairing").json()[
-        "pairing_code"
-    ]
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
             str(tmp_path / "email-profile"),
@@ -120,7 +117,6 @@ def test_email_priority_live_reputation_and_persistent_review(
                 if context.service_workers
                 else context.wait_for_event("serviceworker")
             )
-            worker.evaluate("key=>pair(key)", key)
             page = context.new_page()
             navigation = "".join(
                 f'<a href="/navigation/{i}">Folder{i}</a> ' for i in range(260)
@@ -170,14 +166,14 @@ def test_email_priority_live_reputation_and_persistent_review(
                 tab,
             )
             overlay.locator("#toggle").click()
-            overlay.locator(".finding-row").filter(has_text="link ·").first.click()
+            overlay.locator(".finding-row[data-kind=link]").first.click()
             expect(overlay.locator("#facts")).to_contain_text(
                 "VirusTotal reports 3 malicious", timeout=12000
             )
             expect(overlay.locator("#reputation")).to_contain_text("public-risk.com")
             page.locator("#email-link").dispatch_event("contextmenu")
             expect(overlay.locator("#locate")).to_have_count(0)
-            row = overlay.locator(".finding-row").filter(has_text="link ·").first
+            row = overlay.locator(".finding-row[data-kind=link]").first
             previous_heading = overlay.locator("#count").inner_text()
             page.evaluate("document.body.append(document.createElement('aside'))")
             expect(overlay).to_have_attribute("data-status", "pending")

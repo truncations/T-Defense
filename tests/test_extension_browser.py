@@ -9,7 +9,6 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_path):
     with httpx.Client(base_url=server, trust_env=False) as client:
-        key = client.get("/api/extension/pairing").json()["pairing_code"]
         before = client.get("/api/extension/stats").json()["processed_scans"]
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
@@ -27,7 +26,6 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
             if context.service_workers
             else context.wait_for_event("serviceworker")
         )
-        assert worker.evaluate("key => pair(key)", key)["ok"]
         posted = []
 
         def request(req):
@@ -68,7 +66,7 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
         )
         overlay.locator("#toggle").click()
         page.screenshot(
-            path=str(tmp_path / "extension-message-overlay.png"), full_page=False
+            path="/tmp/browser/extension-message-overlay.png", full_page=False
         )
         link = page.locator(".lab-message a").first
         link.click()
@@ -97,7 +95,7 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
         page.locator("#add-form").click()
         password = page.locator('input[name="password"]')
         password.fill("PRIVATE-TYPED-SENTINEL")
-        overlay.locator(".finding-row").filter(has_text="form ·").first.click()
+        overlay.locator(".finding-row[data-kind=form]").first.click()
         expect(overlay.locator("#facts")).to_contain_text("unencrypted", timeout=12000)
         page.locator(".lab-risk-form button").click()
         expect(overlay.locator("#guard-note")).to_be_visible()
@@ -131,9 +129,7 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
             set(json.loads(body)) == {"page_origin", "reason", "elements", "coverage"}
             for body in posted
         )
-        page.screenshot(
-            path=str(tmp_path / "extension-form-overlay.png"), full_page=False
-        )
+        page.screenshot(path="/tmp/browser/extension-form-overlay.png", full_page=False)
         # Delay actual backend responses, then change DOM during the request.
         worker.evaluate("""() => {globalThis.originalRequest=requestBackend;
           requestBackend=async(path,...args)=>{const value=await originalRequest(path,...args);
@@ -160,23 +156,14 @@ def test_real_extension_mutations_privacy_and_interaction_guards(server, tmp_pat
         assert new_state["warningCount"] == 0
         expect(overlay).to_have_attribute("data-warning-count", "0")
         worker.evaluate("() => {requestBackend=originalRequest;}")
-        # An approved installation repairs an invalid session key automatically.
-        previous_scan = overlay.get_attribute("data-scan-id")
         worker.evaluate(
-            "async () => chrome.storage.session.set({backendKey:'invalid-but-long-enough-pairing-code'})"
+            "() => {requestBackend=async()=>{const e=new Error('Local T-Defense service could not complete this check.');throw e;};}"
         )
         worker.evaluate(
             "id => chrome.tabs.sendMessage(id,{type:'TDEFENSE_SCAN'})", tab_id
         )
-        page.wait_for_function(
-            "old=>{const h=document.querySelector('#tdefense-page-guard');return h.dataset.status==='checked' && h.dataset.scanId && h.dataset.scanId!==old;}",
-            arg=previous_scan,
-            timeout=12000,
-        )
-        assert worker.evaluate(
-            """async()=>{for(let i=0;i<60;i++){const {backendKey}=await chrome.storage.session.get('backendKey');if(backendKey && backendKey!=='invalid-but-long-enough-pairing-code'){try{const result=await requestBackend('/api/extension/connect',{},backendKey);if(result.connected)return true;}catch{}}await new Promise(resolve=>setTimeout(resolve,200));}return false;}"""
-        )
-        expect(overlay).to_have_attribute("data-warning-count", "0")
+        expect(overlay).to_have_attribute("data-status", "unavailable", timeout=12000)
+        assert overlay.get_attribute("data-status") == "unavailable"
         worker.evaluate("id => stopMonitoring(id)", tab_id)
         expect(overlay).to_have_count(0)
         assert (

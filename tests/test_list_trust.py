@@ -4,7 +4,6 @@ import json
 import shutil
 from pathlib import Path
 
-import httpx
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -32,8 +31,6 @@ def test_findings_list_only_initiates_genuine_popup_confirmation(server, tmp_pat
             if context.service_workers
             else context.wait_for_event("serviceworker")
         )
-        key = httpx.get(server + "/api/extension/pairing").json()["pairing_code"]
-        worker.evaluate("key=>pair(key)", key)
         page = context.new_page()
         page.route(
             "**/list-trust",
@@ -48,7 +45,7 @@ def test_findings_list_only_initiates_genuine_popup_confirmation(server, tmp_pat
         expect(ui).to_have_attribute("data-warning-count", "2", timeout=15000)
         ui.locator("#risk-indicator").click()
         ui.locator(".finding-row").first.click()
-        ui.locator(".actions .finding-trust").click()
+        ui.locator(".detail .finding-trust").click()
         assert worker.evaluate("()=>TrustStore.read()") == []
         tab = worker.evaluate(
             "async()=> (await chrome.tabs.query({})).find(t=>t.url?.endsWith('/list-trust')).id"
@@ -73,5 +70,5 @@ def test_findings_list_only_initiates_genuine_popup_confirmation(server, tmp_pat
         )
         expect(ui).to_have_attribute("data-warning-count", "0", timeout=12000)
         assert len(worker.evaluate("()=>TrustStore.read()")) == 1
-        page.screenshot(path=str(tmp_path / "t-defense/trust-confirmed.png"))
+        page.screenshot(path="/tmp/browser/t-defense/trust-confirmed.png")
         context.close()

@@ -4,11 +4,10 @@ A Chrome/Edge browser extension that monitors supported websites until you stop 
 
 ## Browser extension: current primary demo
 
-1. Start the local backend using the command below, then open http://127.0.0.1:8000/.
+1. Start the local backend using the command below. There is no setup page or pairing: the extension connects to it automatically whenever it is running.
 2. Download/extract the extension, or use this repository's `extension/` folder directly. In `chrome://extensions` or `edge://extensions`, enable Developer mode, choose Load unpacked and select the folder containing `manifest.json`.
-3. Copy the pairing code from the dashboard, open the T-Defense toolbar popup, paste it and select Pair backend. Restarting the browser/backend requires pairing again.
-4. Open the toolbar popup, click **Start everywhere** and grant the optional HTTP/HTTPS website access once. Monitoring then follows supported tabs and sites until **Stop everywhere**. The preference survives browser restarts; pairing credentials remain session-only, so restarting the browser/backend may require pairing again.
-5. To see warnings reliably, open http://127.0.0.1:8000/extension-lab, add a synthetic message, form or attachment. Click the compact dock’s ! button for numbered findings. Every completed result has a real backend scan ID/time; the setup dashboard counts completed checks.
+3. Open the toolbar popup, click **Start everywhere** and grant the optional HTTP/HTTPS website access once. Monitoring then follows supported tabs and sites until **Stop everywhere**. The preference survives browser restarts.
+4. To see warnings reliably, open http://127.0.0.1:8000/extension-lab, add a synthetic message, form or attachment. Click the compact dock’s ! button for numbered findings. Every completed result has a real backend scan ID/time.
 
 Checks repeat periodically and after DOM changes; browser background throttling can delay them. Pause everywhere stops all tabs. The engine uses temporary structural rules, not the pending sponsor classifier. It can miss phishing and can warn on legitimate pages. It inspects at most 200 candidates and bounded open component trees; frames, closed components and attachment contents remain unscanned. Programmatic navigation/form.submit, earlier page handlers, middle/context-menu clicks and unsupported frames may evade action interception. A page can tamper with injected overlays: also check the genuine toolbar badge/popup. This is a developer prototype, not a production security guarantee.
 

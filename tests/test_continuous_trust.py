@@ -5,7 +5,6 @@ import json
 import shutil
 from pathlib import Path
 
-import httpx
 from playwright.sync_api import expect, sync_playwright
 
 from tests.test_social_engineering import CRYPTO
@@ -14,7 +13,6 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_continuous_monitoring_trust_revocation_and_quiet_ui(server, tmp_path):
-    key = httpx.get(server + "/api/extension/pairing").json()["pairing_code"]
     extension = tmp_path / "extension"
     shutil.copytree(ROOT / "extension", extension)
     manifest = json.loads((extension / "manifest.json").read_text(encoding="utf8"))
@@ -61,7 +59,6 @@ def test_continuous_monitoring_trust_revocation_and_quiet_ui(server, tmp_path):
                 if context.service_workers
                 else context.wait_for_event("serviceworker")
             )
-            worker.evaluate("key=>pair(key)", key)
             context.route(
                 "**/continuous-email",
                 lambda route: route.fulfill(content_type="text/html", body=html),
@@ -215,7 +212,6 @@ def test_continuous_monitoring_trust_revocation_and_quiet_ui(server, tmp_path):
             )
             assert worker.evaluate("async()=>(await globalSettings()).enabled") is True
             assert len(worker.evaluate("()=>TrustStore.read()")) == 1
-            worker.evaluate("key=>pair(key)", key)
             context.route(
                 "**/continuous-email",
                 lambda route: route.fulfill(content_type="text/html", body=html),

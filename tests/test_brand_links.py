@@ -109,10 +109,8 @@ def test_recognized_paypal_domain_does_not_bypass_other_evidence(collector):
 
 
 def test_native_extension_lists_and_guards_missed_link(server, tmp_path):
-    import httpx
     from playwright.sync_api import expect
 
-    key = httpx.get(server + "/api/extension/pairing").json()["pairing_code"]
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
             str(tmp_path / "brand-profile"),
@@ -130,7 +128,6 @@ def test_native_extension_lists_and_guards_missed_link(server, tmp_path):
                 if context.service_workers
                 else context.wait_for_event("serviceworker")
             )
-            worker.evaluate("key=>pair(key)", key)
             page = context.new_page()
             # Intercept all fixture/destination traffic. Never visit the reported site.
             page.route("https://www.paypal.ai/**", lambda route: route.abort())
@@ -154,7 +151,8 @@ def test_native_extension_lists_and_guards_missed_link(server, tmp_path):
             expect(guard.locator("#guard-note")).to_be_visible()
             expect(guard.locator(".finding-row")).to_have_count(1)
             assert page.url == server + "/brand-fixture"
-            page.screenshot(path=str(tmp_path / "brand-link-warning.png"))
+            Path("/tmp/browser").mkdir(exist_ok=True)
+            page.screenshot(path="/tmp/browser/brand-link-warning.png")
             worker.evaluate("id=>stopMonitoring(id)", tab)
             expect(guard).to_have_count(0)
         finally:

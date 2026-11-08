@@ -18,4 +18,4 @@ Version0.4.1 keeps a confirmed backend outage visible during automatic/manual re
 
 The count tab moves vertically only within its current document and always starts bottom right on a new page. Its arrow opens a right-side drawer. The genuine popup keeps standardized findings as a backup; missing page controls are not proof of safe content. Conversation work is preparation-only, see CONVERSATION_PREPARATION.md.
 
-0.5.1: Automatic pairing accepts a valid existing connection; first-time approval opens local setup. Reload the installed extension after copying updated files to replace old monitors. Starting Python alone cannot install new browser code.
+0.8.0: Pairing removed; the extension connects to the local service automatically.

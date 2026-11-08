@@ -1,3 +1,11 @@
+# T-Defense 0.8.0 local update — November 8, 2026
+
+## 0.8.0
+- Pairing removed. The extension connects to the local service on 127.0.0.1:8000 by itself whenever it is running; the service only accepts requests from the T-Defense extension (checked by its extension address), so websites cannot use it.
+- The local setup/test dashboard page at http://127.0.0.1:8000/ is removed; that address now just says the service is running. The live test lab stays at /extension-lab.
+- New toolbar window following the PDF: protection off/on card with switch, "This page" result card (Caution/Dangerous badge, finding count, last check time, View details list), Check now, and a Settings screen (VirusTotal per-tab switch, Trusted elements with Manage, Backend status, Reset panel position).
+- Fix: after a download was paused, "Continue anyway" did nothing on sites (like Claude) that create a temporary file link and remove it immediately. T-Defense now keeps a copy of that file the moment it pauses the click, so continuing still downloads it.
+
 # T-Defense 0.5.2 local update — November 8, 2026
 
 ## 0.5.2 link sensitivity correction
@@ -33,3 +41,7 @@ Back up your existing folder and merge this source update, preserving .env, work
 
 ## Changed source areas
 extension/content.js, background.js, popup.js/html/css, manifest.json, README.md; app/page_guard.py; static/extension.html and extension-setup.js; new/updated regression tests; CONTRACTS.md, CONVERSATION_PREPARATION.md, PROGRESS.md and these notes. Earlier bounded-scanner and filename/price false-positive fixes remain included.
+
+## 0.7.0
+- Side panel redesigned: status banner, Findings / Scan info tabs, numbered rows with CAUTION/DANGEROUS badges, per-finding card with Locate and Trust, partial-scan notice, Check again / Pause everywhere.
+- Removed the Windows Sandbox kit, Check in Sandbox button and sandbox job service.

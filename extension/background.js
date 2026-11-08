@@ -9,38 +9,22 @@ function withTab(id,operation){
   next.then(cleanup,cleanup);return next;
 }
 chrome.storage.session.setAccessLevel({accessLevel:'TRUSTED_CONTEXTS'}).catch(()=>{});
-async function requestBackend(path,body,key,reputation=false) {
-  let response;try{response=await fetch(BACKEND+path,{method:'POST',headers:{'Content-Type':'application/json','X-TDefense-Key':key,'X-TDefense-Client':chrome.runtime.id,...(reputation?{'X-TDefense-Reputation':'enabled'}:{})},body:JSON.stringify(body),signal:AbortSignal.timeout(6000),cache:'no-store',credentials:'omit',redirect:'error'});}catch(error){error.retryable=true;throw error;}
-  if (!response.ok) {const error=new Error(response.status===403?'Pair again with the current backend session.':'The local backend could not complete this check.');error.auth=response.status===403;error.retryable=response.status===408 || response.status===429 || response.status>=500;throw error;}
+async function requestBackend(path,body,reputation=false) {
+  let response;try{response=await fetch(BACKEND+path,{method:'POST',headers:{'Content-Type':'application/json','X-TDefense-Client':chrome.runtime.id,...(reputation?{'X-TDefense-Reputation':'enabled'}:{})},body:JSON.stringify(body),signal:AbortSignal.timeout(6000),cache:'no-store',credentials:'omit',redirect:'error'});}catch(error){error.retryable=true;throw error;}
+  if (!response.ok) {const error=new Error('The local T-Defense service could not complete this check. Make sure it is running.');error.auth=response.status===403;error.retryable=response.status===408 || response.status===429 || response.status>=500;throw error;}
   return response.json();
 }
 async function tabState(id) {return (await chrome.storage.session.get(stateKey(id)))[stateKey(id)] || {active:false,scanCount:0};}
 async function saveState(id,state) {await chrome.storage.session.set({[stateKey(id)]:state});}
-async function pair(key) {
-  if (typeof key!=='string' || key.length<24 || key.length>100) throw new Error('Paste the current pairing code from local setup.');
-  await requestBackend('/api/extension/connect',{},key);
-  await chrome.storage.session.set({backendKey:key});
-  return {ok:true};
-}
-let pairingRequest=null;
-async function automaticPair(){
-  if(pairingRequest)return pairingRequest;
-  pairingRequest=(async()=>{const response=await fetch(BACKEND+'/api/extension/auto-pair',{method:'POST',headers:{'Content-Type':'application/json','X-TDefense-Client':chrome.runtime.id},body:'{}',credentials:'omit',redirect:'error',cache:'no-store',signal:AbortSignal.timeout(6000)});
-    if(!response.ok)throw new Error('Local pairing unavailable. Keep the Python application running.');
-    const result=await response.json();if(result.approval_required){const error=new Error('One-time local approval required. Open local setup and approve installation '+chrome.runtime.id+'.');error.approvalRequired=true;throw error;}
-    return pair(result.pairing_code);
-  })();try{return await pairingRequest;}finally{pairingRequest=null;}
-}
-async function connectedKey(){let {backendKey}=await chrome.storage.session.get('backendKey');if(backendKey){try{await requestBackend('/api/extension/connect',{},backendKey);return backendKey;}catch(error){if(!error.auth)throw error;}}await automaticPair();return (await chrome.storage.session.get('backendKey')).backendKey;}
+async function ensureBackend(){try{return await requestBackend('/api/extension/connect',{});}catch{throw new Error('Local T-Defense service is not running. Start it, then try again.');}}
 async function startMonitoring(id) {
   const intent=crypto.randomUUID();
   await withTab(id,async()=>{const previous=await tabState(id);await saveState(id,{...previous,startIntent:intent});});
   try {
-    const backendKey=await connectedKey();
+    await ensureBackend();
     const tab=await chrome.tabs.get(id);let origin;
     try {const url=new URL(tab.url);if(!['http:','https:'].includes(url.protocol))throw Error();origin=url.origin;}
     catch {throw new Error('Open a regular HTTP or HTTPS website first.');}
-    await requestBackend('/api/extension/connect',{},backendKey);
     await withTab(id,async()=>{const previous=await tabState(id);
       if(previous.startIntent!==intent)throw new Error('Monitoring was stopped or a newer action replaced this start.');
       await saveState(id,{active:true,origin,runId:intent,documentId:previous.origin===origin?previous.documentId:null,scanCount:previous.scanCount || 0,reputationEnabled:previous.origin===origin && !!previous.reputationEnabled,lastError:null});});
@@ -74,9 +58,8 @@ async function assess(snapshot,sender,revision,scopeToken) {
     if(state.documentId && state.documentId!==sender.documentId)throw new Error('Monitoring was stopped for the previous document.');
     await saveState(id,{...state,documentId:sender.documentId});return state;});
   const runId=state.runId;
-  const backendKey=await connectedKey();
   try {
-    const result=await requestBackend('/api/page/assess',snapshot,backendKey,!!state.reputationEnabled);
+    const result=await requestBackend('/api/page/assess',snapshot,!!state.reputationEnabled);
     // A stopped/navigated tab must not be resurrected by a delayed response.
     const completedGlobal=await globalSettings();
     const alive=await chrome.tabs.sendMessage(id,{type:'TDEFENSE_DOCUMENT_CURRENT',revision,scopeToken},{documentId:sender.documentId}).catch(()=>null);
@@ -92,7 +75,7 @@ async function assess(snapshot,sender,revision,scopeToken) {
     throw error;
   }
 }
-function mergeFindings(previous,snapshot,result){const covered=new Set(snapshot.elements.map(row=>row.element_id));const merged=new Map((previous || []).filter(row=>!covered.has(row.element_id)).map(row=>[row.element_id,{...row,current:false}]));for(const row of result.warnings)merged.set(row.element_id,{...row,current:true});return [...merged.values()].slice(-200);}
+function mergeFindings(previous,snapshot,result){const covered=new Set(snapshot.elements.map(row=>row.element_id));const merged=new Map((previous || []).filter(row=>!covered.has(row.element_id)).map(row=>[row.element_id,{...row,current:false}]));const targets=new Map(snapshot.elements.map(row=>[row.element_id,row.target_origin || null]));for(const row of result.warnings)merged.set(row.element_id,{...row,target_origin:targets.get(row.element_id) || null,current:true});return [...merged.values()].slice(-200);}
 const WEB_ORIGINS=['http://*/*','https://*/*'];
 async function globalSettings(){return (await chrome.storage.local.get('monitoring')).monitoring || {enabled:false,generation:null};}
 async function registerPersistent(){
@@ -114,7 +97,7 @@ async function enableEverywhere(){
   const intent=crypto.randomUUID();let already=false;
   await withTab('global',async()=>{const previous=await globalSettings();already=previous.enabled;await chrome.storage.local.set({monitoring:{...previous,startIntent:intent}});});
   try {
-    await connectedKey();
+    await ensureBackend();
     await withTab('global',async()=>{const current=await globalSettings();if(current.startIntent!==intent)throw new Error('Monitoring was stopped.');await registerPersistent();await chrome.storage.local.set({monitoring:{enabled:true,generation:already?current.generation:intent}});});
     await armAll();return {ok:true};
   }catch(error){await withTab('global',async()=>{const current=await globalSettings();if(current.startIntent===intent){const next={...current};delete next.startIntent;await chrome.storage.local.set({monitoring:next});}});throw error;}
@@ -147,8 +130,6 @@ async function handle(message,sender) {
   if(message.type==='TDEFENSE_SNAPSHOT')return assess(message.snapshot,sender,message.revision,message.scopeToken);
   if(message.type==='TDEFENSE_PAUSE' && sender.tab){const state=await tabState(sender.tab.id);if(state.origin!==new URL(sender.url).origin)throw new Error('Wrong page session.');return (await globalSettings()).enabled?stopEverywhere():stopMonitoring(sender.tab.id);}
   if(sender.url!==chrome.runtime.getURL('popup.html'))throw new Error('Use the extension popup controls.');
-  if(message.type==='AUTO_PAIR'){try{await connectedKey();return {ok:true};}catch(error){if(!error.approvalRequired)throw error;const url=BACKEND+'/';const tabs=await chrome.tabs.query({});const setup=tabs.find(tab=>tab.url===url);if(setup)await chrome.tabs.update(setup.id,{active:true});else await chrome.tabs.create({url});return {ok:true,approvalRequired:true,installationId:chrome.runtime.id};}}
-  if(message.type==='PAIR')return pair(message.key);
   if(message.type==='REPUTATION'){await withTab(message.tabId,async()=>{const state=await tabState(message.tabId);if(!state.active)throw new Error('Start monitoring before enabling domain checks.');await saveState(message.tabId,{...state,startIntent:null,reputationEnabled:message.enabled===true,runId:crypto.randomUUID()});});await chrome.tabs.sendMessage(message.tabId,{type:'TDEFENSE_RESTART_CHECK'}).catch(()=>{});return {ok:true};}
   if(message.type==='TRUST_PREVIEW'){const candidate=await selection(message.tabId);const token=crypto.randomUUID();await chrome.storage.session.set({['trustCandidate:'+message.tabId]:{fingerprint:candidate.fingerprint,origin:candidate.origin,kind:candidate.kind,documentId:candidate.documentId,token}});return {ok:true,candidate:{origin:candidate.origin,kind:candidate.kind,preview:candidate.preview,token}};}
   if(message.type==='TRUST_SELECTED'){const saved=(await chrome.storage.session.get('trustCandidate:'+message.tabId))['trustCandidate:'+message.tabId];const current=await selection(message.tabId);if(!saved || saved.token!==message.token || saved.fingerprint!==current.fingerprint || saved.documentId!==current.documentId)throw new Error('The selected content changed. Preview it again before trusting.');await TrustStore.add(current);await chrome.storage.session.remove('trustCandidate:'+message.tabId);await broadcast('TDEFENSE_TRUST_CHANGED');return {ok:true};}
@@ -160,7 +141,7 @@ async function handle(message,sender) {
   if(message.type==='STOP'){await stopEverywhere();return stopMonitoring(message.tabId);}
   if(message.type==='SCAN'){await chrome.tabs.sendMessage(message.tabId,{type:'TDEFENSE_SCAN'});return {ok:true};}
   if(message.type==='REVIEW'){const state=await tabState(message.tabId);if(!state.active || !state.findings?.some(row=>row.element_id===message.elementId))throw new Error('This finding is no longer current.');const result=await chrome.tabs.sendMessage(message.tabId,{type:'TDEFENSE_REVIEW',elementId:message.elementId},{documentId:state.documentId}).catch(()=>null);if(!result?.ok)throw new Error('Page controls unavailable. Evidence remains here; reload the page to locate or trust content.');return {ok:true};}
-  if(message.type==='STATE'){const data=await tabState(message.tabId);const {backendKey}=await chrome.storage.session.get('backendKey');return {ok:true,state:data,monitoring:await globalSettings(),paired:!!backendKey};}
+  if(message.type==='STATE'){const data=await tabState(message.tabId);let backend=false;try{await requestBackend('/api/extension/connect',{});backend=true;}catch{}return {ok:true,state:data,monitoring:await globalSettings(),backend,trustedCount:(await TrustStore.read()).length};}
   throw new Error('Unsupported extension command.');
 }
 chrome.runtime.onMessage.addListener((message,sender,reply)=>{

@@ -134,15 +134,12 @@ def phone():
 
 
 @app.get("/")
-@app.get("/extension")
-def extension_dashboard():
-    return FileResponse(
-        ROOT / "static/extension.html",
-        headers={
-            "Cache-Control": "no-store",
-            "X-Frame-Options": "DENY",
-            "Content-Security-Policy": "frame-ancestors 'none'",
-        },
+def service_status():
+    # No setup page or pairing: the extension connects to this service automatically.
+    return HTMLResponse(
+        "<!doctype html><title>T-Defense service</title>"
+        "<p>T-Defense local service is running. Use the browser extension.</p>",
+        headers={"Cache-Control": "no-store", "X-Frame-Options": "DENY"},
     )
 
 

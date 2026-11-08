@@ -1,7 +1,6 @@
 import html
 from pathlib import Path
 
-import httpx
 from playwright.sync_api import expect, sync_playwright
 
 from tests.test_social_engineering import NITRO
@@ -10,7 +9,6 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_all_markers_list_navigation_stable_count_and_manual_refresh(server, tmp_path):
-    key = httpx.get(server + "/api/extension/pairing").json()["pairing_code"]
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
             str(tmp_path / "findings-profile"),
@@ -28,7 +26,6 @@ def test_all_markers_list_navigation_stable_count_and_manual_refresh(server, tmp
                 if context.service_workers
                 else context.wait_for_event("serviceworker")
             )
-            worker.evaluate("key=>pair(key)", key)
             page = context.new_page()
             cards = "".join(
                 f'<article data-tdefense-message="true" id="risk-{i}" style="margin:30px 0;padding:20px;border:1px solid #555"><h2>Quoted synthetic example {i + 1}</h2>'
@@ -135,7 +132,7 @@ def test_all_markers_list_navigation_stable_count_and_manual_refresh(server, tmp
                 "Unchanged warning headline must not be rewritten by background checks"
             )
             page.screenshot(
-                path=str(tmp_path / "social-all-findings.png"), full_page=False
+                path="/tmp/browser/social-all-findings.png", full_page=False
             )
             page.set_viewport_size({"width": 390, "height": 844})
             panel = guard.bounding_box()
@@ -145,7 +142,7 @@ def test_all_markers_list_navigation_stable_count_and_manual_refresh(server, tmp
                 <= 844 * 0.57 + 1
             )
             page.screenshot(
-                path=str(tmp_path / "social-mobile-findings.png"), full_page=False
+                path="/tmp/browser/social-mobile-findings.png", full_page=False
             )
             page.set_viewport_size({"width": 1400, "height": 1000})
             assert posted and all(

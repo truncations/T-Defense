@@ -4,14 +4,12 @@ import json
 import shutil
 from pathlib import Path
 
-import httpx
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_independent_page_positions_and_stable_connection_status(server, tmp_path):
-    key = httpx.get(server + "/api/extension/pairing").json()["pairing_code"]
     extension = tmp_path / "extension"
     shutil.copytree(ROOT / "extension", extension)
     manifest = json.loads((extension / "manifest.json").read_text())
@@ -35,7 +33,6 @@ def test_independent_page_positions_and_stable_connection_status(server, tmp_pat
                 if context.service_workers
                 else context.wait_for_event("serviceworker")
             )
-            worker.evaluate("key=>pair(key)", key)
             context.route(
                 "**/layout-test",
                 lambda route: route.fulfill(

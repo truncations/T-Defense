@@ -10,7 +10,6 @@ import json
 import shutil
 from pathlib import Path
 
-import httpx
 from playwright.sync_api import expect, sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -37,8 +36,6 @@ def main():
             hashlib.sha256((copy / name).read_bytes()).digest()
             == hashlib.sha256((ROOT / "extension" / name).read_bytes()).digest()
         )
-    with httpx.Client(base_url="http://127.0.0.1:8000", trust_env=False) as client:
-        key = client.get("/api/extension/pairing").json()["pairing_code"]
     with sync_playwright() as p:
         context = p.chromium.launch_persistent_context(
             str(ROOT / "work/public-browser-profile"),
@@ -53,7 +50,6 @@ def main():
                 if context.service_workers
                 else context.wait_for_event("serviceworker")
             )
-            worker.evaluate("key => pair(key)", key)
             page = context.new_page()
             page.goto(
                 "https://example.com", wait_until="domcontentloaded", timeout=30000
