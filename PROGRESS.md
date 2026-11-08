@@ -1,6 +1,6 @@
 # T-Defense progress
 
-- Current primary milestone: Browser Page Guard extension (user-directed pivot); DONE locally;107tests pass, reviewed; publication follows.
+- Current primary milestone: Browser Page Guard extension (user-directed pivot); DONE and published;107tests pass, reviewed.
 - Setup: DONE
 - Stage 0: DEFERRED — starter files pending; user authorized placeholder adapter.
 - Stage 1: DONE
@@ -118,4 +118,4 @@
 - Verification so far: focused17tests passed actual MV3 worker/content/backend traffic. Initial full106tests passed in133.51s; final full107tests passed in168.91s including actual HTTPS collector regression for form overrides/external fields and open-root coverage. Ruff check/format and JavaScript syntax checks clean. Read-only actual example.com check reached backend (no forms/links submitted); automation test copy grants only example.com, shipped extension relies on user-invoked activeTab.
 - Final source safety review: no blockers. Demo tester source PASS (internal typography/alert fixes verified); actual screen-reader audio not tested. Final regression condition satisfied. Fresh setup/dashboard/download and preserved SMS route checks passed. Finalsource example.com smoke completed a real backend check without submissions.
 - Honest limits: temporary structural rules, legitimate-page false alarms and missed risks possible; no classifier accuracy claims. Frames/closed trees/attachment contents unscanned, bounded page coverage. Earlier page handlers/programmatic navigation/submission and middle/context-menu actions can evade interception. Page overlays can be tampered with; toolbar remains independent. No store publication or production-ready claim.
-- Starter classifier/dataset/taxonomy still absent; Stage0 and sponsor metrics remain deferred. User-facing ZIP/quickstart/screenshots prepared outside public source. Passing local milestone is ready to commit; publication is pending until the guarded GitHub update succeeds.
+- Starter classifier/dataset/taxonomy still absent; Stage0 and sponsor metrics remain deferred. User-facing ZIP/quickstart/screenshots prepared outside public source. Committed passing local milestone9d0814dab5f2c9070f3ce62afd40e388cb0eaae5 and published source checkpoint80c9d7f7f66614ace4a8a78aeedf5afd8644ab53 through the connected GitHub account. Nonforce expected-head update succeeded; anonymous fetch confirmed the commit. Published tree5586289d6d76e9411d281fc0e1f789dc86f05ae4 matches the103file reviewed Git source exactly. All indexed files passed key/environment scans; only .env.example is tracked. Original local stage commit will remain on local/extension-history-2026-11-07 before main synchronization. This progress record is a docs-only follow-up.
